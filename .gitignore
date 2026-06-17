@@ -1,0 +1,7 @@
+# Source data (large, not version-controlled)
+*.xls
+*.xlsx
+
+# Python cache
+__pycache__/
+*.pyc
