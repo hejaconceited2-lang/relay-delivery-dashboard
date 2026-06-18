@@ -307,11 +307,14 @@ def process_date(date_str):
             gap_label = '编制未知' if stf is None else '?'
 
         s_times = sdf.loc[mask_done, '配送时长_min']
+        # 取消赔偿: 已取消订单的实付金额合计
+        canc_mask = sdf['物流单状态'] == '已取消'
+        canc_comp = sdf.loc[canc_mask, '订单实付'].sum() if canc_mask.any() else 0
         owner = STATION_OWNER.get(s, '竞争方' if grp == '竞争方' else '')
         station_rows.append({
             '站点': s.replace('分段履约广州', ''),
             '全名': s, '归属': grp,
-            '订单量': cnt, '已完成': s_done, '已取消': s_canc,
+            '订单量': cnt, '已完成': s_done, '已取消': s_canc, '取消赔偿': canc_comp,
             '已取货': s_pickup,
             '完成率': round(s_done / cnt * 100, 1) if cnt else 0,
             '编制': stf,
@@ -817,6 +820,7 @@ function switchTab(tabId) {{
     day_total_labor = 0
     day_total_material = 0
     day_total_subsidy = 0
+    day_total_canc_comp = 0
     for _, r in st.iterrows():
         cnt = r['订单量']
         grp = r['归属']
@@ -830,9 +834,10 @@ function switchTab(tabId) {{
             hours_per = HOURS_OVERRIDES.get(date_str, {}).get(r['全名'], HOURS_PER_PERSON)
             labor = stf * hours_per * LABOR_RATE
             material = MATERIAL_PER_STATION
+            canc_comp = r['取消赔偿']
             meets = per_p and per_p >= PER_PERSON_THRESHOLD
             subsidy = (stf - 1) * SUBSIDY_PER_EXTRA if meets else 0
-            profit = revenue + subsidy - labor - material
+            profit = revenue + subsidy - labor - material - canc_comp
 
             station_profits.append({
                 '站点': r['站点'],
@@ -840,6 +845,8 @@ function switchTab(tabId) {{
                 '订单量': cnt,
                 '编制': stf,
                 '人均单量': per_p,
+                '已取消': r['已取消'],
+                '取消赔偿': round(canc_comp, 1),
                 '结算收入': round(settlement, 1),
                 '骑手费收入': round(rider_income, 1),
                 '人力成本': round(labor, 1),
@@ -852,13 +859,14 @@ function switchTab(tabId) {{
             day_total_labor += labor
             day_total_material += material
             day_total_subsidy += subsidy
+            day_total_canc_comp += canc_comp
 
-    day_profit = round(day_total_revenue + day_total_subsidy - day_total_labor - day_total_material, 1)
+    day_profit = round(day_total_revenue + day_total_subsidy - day_total_labor - day_total_material - day_total_canc_comp, 1)
 
     # ── 生成单日 UE 分析页 ──
     build_ue_page(date_display, total, len(st_ours), station_profits,
                   day_profit, day_total_revenue, day_total_subsidy, day_total_labor,
-                  t_min, t_max)
+                  day_total_canc_comp, t_min, t_max)
 
     # 返回摘要用于更新主页面
     return {
@@ -874,12 +882,13 @@ function switchTab(tabId) {{
         'day_revenue': round(day_total_revenue, 1),
         'day_subsidy': round(day_total_subsidy, 1),
         'day_labor': round(day_total_labor, 1),
+        'day_canc_comp': round(day_total_canc_comp, 1),
     }
 
 
 def build_ue_page(date_display, total_orders, ours_count, station_profits,
                   day_profit, day_revenue, day_subsidy, day_labor,
-                  t_min, t_max):
+                  day_canc_comp, t_min, t_max):
     """生成单日 UE 盈利分析页面 MMDD_ue.html"""
     date_obj = datetime.strptime(date_display, '%Y-%m-%d')
     mdd = date_obj.strftime('%m%d')
@@ -933,12 +942,12 @@ def build_ue_page(date_display, total_orders, ours_count, station_profits,
                           margin=dict(t=45, b=10, l=10, r=10))
     html_rev = dark_fig(fig_rev).to_html(full_html=False, include_plotlyjs=False, config=PLOTLY_CONFIG, div_id='chart_rev')
 
-    # 成本构成: 人力 vs 物料
+    # 成本构成: 人力 vs 物料 vs 取消赔偿
     fig_cost = go.Figure()
     fig_cost.add_trace(go.Pie(
-        labels=['人力成本', '物料摊销'],
-        values=[day_labor, day_material],
-        marker_colors=['#f87171', '#fb923c'],
+        labels=['人力成本', '物料摊销', '取消赔偿'],
+        values=[day_labor, day_material, day_canc_comp],
+        marker_colors=['#f87171', '#fb923c', '#ef4444'],
         hole=0.5, textinfo='label+value',
         textfont=dict(color='#e2e8f0', size=11),
     ))
@@ -951,16 +960,20 @@ def build_ue_page(date_display, total_orders, ours_count, station_profits,
     for sp in sorted(station_profits, key=lambda x: x['净利'], reverse=True):
         pc = '#34d399' if sp['净利'] >= 0 else '#f87171'
         subsidy_str = f'+{sp["补贴"]:.0f}' if sp['补贴'] > 0 else '0'
+        canc_str = f'{sp.get("已取消",0)}单' if sp.get('已取消', 0) > 0 else '0'
+        comp_str = f'-¥{sp.get("取消赔偿",0):.0f}' if sp.get('取消赔偿', 0) > 0 else '0'
         rows += f"""
                 <tr>
                   <td>{sp['站点']}</td>
                   <td>{sp['订单量']}</td>
+                  <td>{canc_str}</td>
                   <td>{sp['编制']}人</td>
                   <td>{sp['人均单量']}单/人</td>
                   <td>¥{sp['结算收入']:,.0f}</td>
                   <td>¥{sp['骑手费收入']:,.0f}</td>
                   <td>-¥{sp['人力成本']:,.0f}</td>
                   <td>-¥{sp['物料']:.0f}</td>
+                  <td style="color:#f87171">{comp_str}</td>
                   <td>{subsidy_str}</td>
                   <td style="color:{pc};font-weight:600">¥{sp['净利']:+,.0f}</td>
                 </tr>"""
@@ -1157,6 +1170,11 @@ tr:hover td {{ background:rgba(129,140,248,0.04); }}
             <div class="kpi-sub">{MATERIAL_PER_STATION:.1f}元 × {ours_count}站</div>
         </div>
         <div class="kpi-card">
+            <div class="kpi-title">取消赔偿</div>
+            <div class="kpi-value" style="color:#f87171">-¥{day_canc_comp:,.0f}</div>
+            <div class="kpi-sub">已取消订单实付金额</div>
+        </div>
+        <div class="kpi-card">
             <div class="kpi-title">总补贴</div>
             <div class="kpi-value" style="color:#fbbf24">+¥{day_subsidy:,.0f}</div>
             <div class="kpi-sub">(T-1)×{SUBSIDY_PER_EXTRA}元</div>
@@ -1191,8 +1209,8 @@ tr:hover td {{ background:rgba(129,140,248,0.04); }}
         <div style="max-height:500px;overflow:auto;">
         <table>
             <thead><tr>
-                <th>站点</th><th>单量</th><th>编制</th><th>人均</th>
-                <th>结算</th><th>骑手费</th><th>人力</th><th>物料</th><th>补贴</th><th>净利</th>
+                <th>站点</th><th>单量</th><th>取消</th><th>编制</th><th>人均</th>
+                <th>结算</th><th>骑手费</th><th>人力</th><th>物料</th><th>赔偿</th><th>补贴</th><th>净利</th>
             </tr></thead>
             <tbody>{rows}</tbody>
         </table>
@@ -1242,6 +1260,7 @@ def update_index(dates_summary):
         <a href="{mdd}_ue.html" class="profit-summary">
           <span>结算 ¥{d.get('day_revenue',0):,.0f}</span>
           <span>人力 -¥{d.get('day_labor',0):,.0f}</span>
+          <span>赔偿 -¥{d.get('day_canc_comp',0):,.0f}</span>
           <span>补贴 +¥{d.get('day_subsidy',0):,.0f}</span>
           <span class="profit-net" style="color:{profit_color}">日净利 {d['day_profit']:+,.0f}元</span>
           <span class="profit-arrow">&rarr;</span>
