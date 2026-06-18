@@ -35,7 +35,7 @@ df['归属'] = df['站点名称'].apply(lambda s: '竞争方' if s in COMPETITOR
 KNOWN_STAFF = {
     '分段履约广州绿地星玥': 5, '分段履约广州万菱广场': 2,
     '分段履约广州和业广场': 3, '分段履约广州金鹰大厦': 2,
-    '分段履约广州华林国际C馆': 2, '分段履约广州中大附属第六医院': 2,
+    '分段履约广州华林国际C馆': 2, '分段履约广州中大附属第六医院': 5,
     '分段履约广州珠江国际轻纺城': 3, '分段履约广州万科欧泊': 3,
     '分段履约广州孙逸仙北院': 2, '分段履约广州新亚洲电子城': 3,
     '分段履约广州新中国大厦': 3,
@@ -104,6 +104,7 @@ DARK_LAYOUT = dict(
     legend=dict(font=dict(color='#94a3b8')),
     xaxis=dict(gridcolor='rgba(148,163,184,0.08)', linecolor='rgba(148,163,184,0.15)', zeroline=False),
     yaxis=dict(gridcolor='rgba(148,163,184,0.08)', linecolor='rgba(148,163,184,0.15)', zeroline=False),
+    dragmode=False,
     margin=dict(t=45, b=60, l=55, r=25),
     hoverlabel=dict(bgcolor='#1e293b', font_size=12, font_family='Inter, sans-serif'),
     bargap=0.18,
@@ -112,6 +113,16 @@ DARK_LAYOUT = dict(
 def dark_fig(fig):
     fig.update_layout(**DARK_LAYOUT)
     return fig
+
+PLOTLY_CONFIG = {
+    'displayModeBar': True,
+    'modeBarButtonsToRemove': ['zoom2d', 'pan2d', 'select2d', 'lasso2d', 'zoomIn2d', 'zoomOut2d', 'autoScale2d'],
+    'scrollZoom': False,
+    'doubleClick': False,
+    'showTips': False,
+    'responsive': True,
+    'displaylogo': False,
+}
 
 # ══════════════════════════════════════════════════════════════
 # 图表生成函数
@@ -131,7 +142,7 @@ def make_hourly_chart(sdf, title='分时订单量', color='#818cf8'):
     fig.update_layout(
         title=title, height=260, xaxis_tickangle=-45, yaxis_title=None,
     )
-    return dark_fig(fig).to_html(full_html=False, include_plotlyjs=False)
+    return dark_fig(fig).to_html(full_html=False, include_plotlyjs=False, config=PLOTLY_CONFIG)
 
 
 def make_time_hist(sdf, title='配送时长分布', color='#818cf8'):
@@ -150,7 +161,7 @@ def make_time_hist(sdf, title='配送时长分布', color='#818cf8'):
     fig.update_layout(
         title=title, height=260, xaxis_title=None, yaxis_title=None, bargap=0.05,
     )
-    return dark_fig(fig).to_html(full_html=False, include_plotlyjs=False)
+    return dark_fig(fig).to_html(full_html=False, include_plotlyjs=False, config=PLOTLY_CONFIG)
 
 
 # ── 总览图表 ─────────────────────────────────────────────────
@@ -179,7 +190,7 @@ fig_gap.update_layout(
     yaxis_range=[0, max(known['人均单量'].max() + 5, 25)],
     xaxis_tickangle=-30,
 )
-html_gap = dark_fig(fig_gap).to_html(full_html=False, include_plotlyjs=False, div_id='chart_gap')
+html_gap = dark_fig(fig_gap).to_html(full_html=False, include_plotlyjs=False, config=PLOTLY_CONFIG, div_id='chart_gap')
 
 # 图表2: 全站点订单量
 fig_bar = go.Figure()
@@ -200,7 +211,7 @@ fig_bar.update_layout(
     height=380, xaxis_tickangle=-30, yaxis_title=None,
     legend=dict(orientation='h', yanchor='bottom', y=1.02),
 )
-html_bar = dark_fig(fig_bar).to_html(full_html=False, include_plotlyjs=False, div_id='chart_bar')
+html_bar = dark_fig(fig_bar).to_html(full_html=False, include_plotlyjs=False, config=PLOTLY_CONFIG, div_id='chart_bar')
 
 # 图表3: 全站分时
 html_hour_all = make_hourly_chart(df, '全站分时订单量', '#818cf8')
@@ -221,7 +232,7 @@ fig_time_all.update_layout(
     title=f'全站配送时长分布（均值{times_all.mean():.0f}min · n={len(times_all)}）',
     height=320, xaxis_title=None, yaxis_title=None, bargap=0.05,
 )
-html_time_all = dark_fig(fig_time_all).to_html(full_html=False, include_plotlyjs=False, div_id='chart_time_all')
+html_time_all = dark_fig(fig_time_all).to_html(full_html=False, include_plotlyjs=False, config=PLOTLY_CONFIG, div_id='chart_time_all')
 
 # ── 每个站点明细图表 ──────────────────────────────────────────
 station_charts = {}
