@@ -1357,6 +1357,7 @@ def update_index(dates_summary):
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>接力送 · 日订单运营看板</title>
+<script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
