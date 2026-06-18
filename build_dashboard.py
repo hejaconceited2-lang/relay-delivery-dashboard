@@ -168,6 +168,7 @@ def build_station_tab(r, station_charts):
     tab_id = short.replace(' ', '_')
     return f"""
     <div class="tab-panel" id="tab_{tab_id}">
+        <a href="javascript:switchTab('overview')" class="back-link">&larr; 返回总览</a>
         <div class="kpi-grid">
             {kpi_card('订单量', r['订单量'], f"完成率 {r['完成率']}%", '#818cf8')}
             {kpi_card('已完成', r['已完成'], f"已取消 {r['已取消']}", '#34d399')}
@@ -710,6 +711,18 @@ tr td a:hover {{ color:#a5b4fc; text-decoration:underline; }}
   margin:14px 0; font-size:12px; color:#fcd34d;
 }}
 .note-box strong {{ color:var(--warning); }}
+
+.back-link {{
+  display:inline-block; margin-bottom:12px; padding:6px 14px;
+  background:rgba(129,140,248,0.08); border:1px solid rgba(129,140,248,0.2);
+  border-radius:6px; color:var(--accent); font-size:12px; font-weight:500;
+  text-decoration:none; transition:all var(--transition);
+  cursor:pointer;
+}}
+.back-link:hover {{
+  background:rgba(129,140,248,0.16); border-color:var(--border-glow);
+  color:#a5b4fc;
+}}
 
 ::-webkit-scrollbar {{ width:6px; height:6px; }}
 ::-webkit-scrollbar-track {{ background:transparent; }}
