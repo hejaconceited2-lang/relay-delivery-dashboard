@@ -193,10 +193,10 @@ def build_station_tab(r, station_charts):
 
 
 def find_xls(date_dir):
-    """在日期目录中查找 xls 文件"""
-    candidates = glob.glob(os.path.join(date_dir, '*.xls'))
+    """在日期目录中查找数据文件 (xls/xlsx)"""
+    candidates = glob.glob(os.path.join(date_dir, '*.xls')) + glob.glob(os.path.join(date_dir, '*.xlsx'))
     if not candidates:
-        raise FileNotFoundError(f'在 {date_dir} 中未找到 xls 数据文件')
+        raise FileNotFoundError(f'在 {date_dir} 中未找到数据文件 (xls/xlsx)')
     # 优先选最新的文件
     candidates.sort(key=lambda p: os.path.getmtime(p), reverse=True)
     return candidates[0]
@@ -1053,7 +1053,7 @@ def discover_dates():
             dir_path = os.path.join(BASE_DIR, name)
             if os.path.isdir(dir_path):
                 # 检查是否有 xls 数据文件
-                if glob.glob(os.path.join(dir_path, '*.xls')):
+                if glob.glob(os.path.join(dir_path, '*.xls')) or glob.glob(os.path.join(dir_path, '*.xlsx')):
                     yy, mm, dd = name.split('-')
                     year = '20' + yy
                     dates.append(f'{year}-{mm}-{dd}')
