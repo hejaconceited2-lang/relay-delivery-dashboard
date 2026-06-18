@@ -65,6 +65,13 @@ STAFF_OVERRIDES = {
     },
 }
 
+# 日期特定工时覆盖（小时/人，默认 HOURS_PER_PERSON=3）
+HOURS_OVERRIDES = {
+    '2026-06-18': {
+        '分段履约广州华林国际C馆': 1.5,  # 双人各1.5h
+    },
+}
+
 # ════════════════════════════════════════════════════════
 # Plotly 暗色模板
 # ════════════════════════════════════════════════════════
@@ -820,7 +827,8 @@ function switchTab(tabId) {{
             settlement = cnt * SETTLEMENT_PRICE
             rider_income = cnt * RIDER_FEE
             revenue = settlement + rider_income
-            labor = stf * HOURS_PER_PERSON * LABOR_RATE
+            hours_per = HOURS_OVERRIDES.get(date_str, {}).get(r['全名'], HOURS_PER_PERSON)
+            labor = stf * hours_per * LABOR_RATE
             material = MATERIAL_PER_STATION
             meets = per_p and per_p >= PER_PERSON_THRESHOLD
             subsidy = (stf - 1) * SUBSIDY_PER_EXTRA if meets else 0
