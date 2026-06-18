@@ -29,6 +29,21 @@ KNOWN_STAFF = {
 # 竞争方站点
 COMPETITORS = {'分段履约广州新中国大厦', '分段履约广州新亚洲电子城', '分段履约广州孙逸仙北院'}
 
+# 点位归属人（我方站点）
+STATION_OWNER = {
+    '分段履约广州中大附属第六医院': '陈贤乡',
+    '分段履约广州和业广场': '公司',
+    '分段履约广州珠江国际轻纺城': '赵金荣',
+    '分段履约广州绿地星玥': '赵金荣',
+    '分段履约广州中大附三岭南医院': '朱泽恩',
+    '分段履约广州万菱广场': '公司',
+    '分段履约广州金鹰大厦': '公司',
+    '分段履约广州汇德国际': '公司',
+    '分段履约广州华林国际C馆': '公司',
+    '分段履约广州云升科技园': '欧金标',
+    # 万科欧泊待确认
+}
+
 # 日期特定编制覆盖（仅记录与基准不同的日期）
 # 格式: "YYYY-MM-DD" -> {站点: 编制}
 # 06-17: 中大附属第六医院尚未从2人扩到6人，万科欧泊3人
@@ -156,6 +171,7 @@ def build_station_tab(r, station_charts):
             {kpi_card('已完成', r['已完成'], f"已取消 {r['已取消']}", '#34d399')}
             {pickup_html}
             {kpi_card('编制', f"{staff}人" if staff else "?", '', '#a78bfa')}
+            {kpi_card('归属人', r.get('归属人', '') or '—', '', '#e2e8f0')}
             {kpi_card('人均单量', f"{r['人均单量']}单/人" if r['人均单量'] else 'N/A', status_note, '#34d399' if r['达标'] == 'Y' else '#f87171')}
             {subsidy_html}
             {kpi_card('平均配送', f"{r['平均配送min']}min" if pd.notna(r['平均配送min']) else 'N/A', f"中位 {r['中位配送min']}min", '#fbbf24')}
@@ -269,6 +285,7 @@ def process_date(date_str):
             gap_label = '编制未知' if stf is None else '?'
 
         s_times = sdf.loc[mask_done, '配送时长_min']
+        owner = STATION_OWNER.get(s, '竞争方' if grp == '竞争方' else '')
         station_rows.append({
             '站点': s.replace('分段履约广州', ''),
             '全名': s, '归属': grp,
@@ -280,6 +297,7 @@ def process_date(date_str):
             '距20单缺口': gap,
             '达标': 'Y' if meets else ('N' if stf else '?'),
             '缺口描述': gap_label,
+            '归属人': owner,
             '平均配送min': round(s_times.mean(), 1) if len(s_times) > 0 else None,
             '中位配送min': round(s_times.median(), 1) if len(s_times) > 0 else None,
             '超60min': int((s_times > 60).sum()),
@@ -395,12 +413,14 @@ def process_date(date_str):
         gap_s = r['缺口描述']
         gap_color = '#f87171' if (r['距20单缺口'] and r['距20单缺口'] > 0) else '#34d399'
         pickup_s = f'· 配送中{r["已取货"]}' if r['已取货'] > 0 else ''
+        owner = r.get('归属人', '') or '—'
         table_html += f"""
     <tr>
         <td><a href="javascript:switchTab('{r['站点'].replace(' ', '_')}')" style="color:#818cf8;cursor:pointer;text-decoration:underline">{r['站点']}</a></td>
         <td>{r['订单量']}</td>
         <td>{r['完成率']}%</td>
         <td>{staff_s}</td>
+        <td>{owner}</td>
         <td>{per_s}</td>
         <td><b style="color:{gap_color}">{gap_s}{pickup_s}</b></td>
         <td>{badge}</td>
@@ -450,7 +470,7 @@ def process_date(date_str):
             <div style="max-height:450px;overflow:auto;">
             <table>
                 <thead><tr>
-                    <th>站点</th><th>订单量</th><th>完成率</th><th>编制</th>
+                    <th>站点</th><th>订单量</th><th>完成率</th><th>编制</th><th>归属人</th>
                     <th>人均单量</th><th>距20单门槛</th><th>达标</th>
                     <th>平均配送</th><th>已取消</th>
                 </tr></thead>
