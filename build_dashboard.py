@@ -44,6 +44,15 @@ STATION_OWNER = {
     '分段履约广州万科欧泊': '赵金荣',
 }
 
+# UE 参数（推广期）
+SETTLEMENT_PRICE = 2.5     # 结算价 元/单
+RIDER_FEE = 1.0            # 骑手费率 元/单 (向骑手收取)
+LABOR_RATE = 30            # 人力时薪 元/h
+HOURS_PER_PERSON = 3       # 人均日工时 h
+MATERIAL_PER_STATION = 100 / 30  # 物料摊销 元/天/站
+SUBSIDY_PER_EXTRA = 80     # 补贴 (T-1)x80 元/天
+PER_PERSON_THRESHOLD = 20  # 补贴门槛 人均单量
+
 # 日期特定编制覆盖（仅记录与基准不同的日期）
 # 格式: "YYYY-MM-DD" -> {站点: 编制}
 # 06-17: 中大附属第六医院尚未从2人扩到6人，万科欧泊3人
@@ -795,6 +804,49 @@ function switchTab(tabId) {{
     print(f'  [OK] {os.path.basename(output_html)} ({total}单, {len(st)}站, {done}送达, {canc}取消)')
     print(f'  [OK] {os.path.basename(root_html)} (根目录同步)')
 
+    # ── 逐站盈亏计算 ──
+    station_profits = []
+    day_total_revenue = 0
+    day_total_labor = 0
+    day_total_material = 0
+    day_total_subsidy = 0
+    for _, r in st.iterrows():
+        cnt = r['订单量']
+        grp = r['归属']
+        stf = r['编制']
+        per_p = r['人均单量'] if pd.notna(r['人均单量']) else None
+
+        if grp == '我方' and stf and cnt > 0:
+            settlement = cnt * SETTLEMENT_PRICE
+            rider_income = cnt * RIDER_FEE
+            revenue = settlement + rider_income
+            labor = stf * HOURS_PER_PERSON * LABOR_RATE
+            material = MATERIAL_PER_STATION
+            meets = per_p and per_p >= PER_PERSON_THRESHOLD
+            subsidy = (stf - 1) * SUBSIDY_PER_EXTRA if meets else 0
+            profit = revenue + subsidy - labor - material
+
+            station_profits.append({
+                '站点': r['站点'],
+                '归属': grp,
+                '订单量': cnt,
+                '编制': stf,
+                '人均单量': per_p,
+                '结算收入': round(settlement, 1),
+                '骑手费收入': round(rider_income, 1),
+                '人力成本': round(labor, 1),
+                '物料': round(material, 1),
+                '补贴': round(subsidy, 1),
+                '净利': round(profit, 1),
+                '达标': r['达标'],
+            })
+            day_total_revenue += revenue
+            day_total_labor += labor
+            day_total_material += material
+            day_total_subsidy += subsidy
+
+    day_profit = round(day_total_revenue + day_total_subsidy - day_total_labor - day_total_material, 1)
+
     # 返回摘要用于更新主页面
     return {
         'date': date_display,
@@ -804,6 +856,11 @@ function switchTab(tabId) {{
         'canc': canc,
         'time_range': f'{t_min.strftime("%H:%M")}-{t_max.strftime("%H:%M")}',
         'coverage_label': coverage_label,
+        'station_profits': station_profits,
+        'day_profit': day_profit,
+        'day_revenue': round(day_total_revenue, 1),
+        'day_subsidy': round(day_total_subsidy, 1),
+        'day_labor': round(day_total_labor, 1),
     }
 
 
@@ -826,18 +883,67 @@ def update_index(dates_summary):
     for d in dates_summary:
         badge_class = 'badge-new' if d['coverage_label'] in ('全天数据', '近全天数据') else 'badge-pending'
         mdd = datetime.strptime(d['date'], '%Y-%m-%d').strftime('%m%d')
+        profit_color = '#34d399' if d.get('day_profit', 0) >= 0 else '#f87171'
+
+        # 盈利摘要行
+        profit_row = ''
+        if d.get('day_profit') is not None:
+            profit_row = f"""
+        <div class="profit-summary" onclick="toggleProfit('{mdd}')">
+          <span>结算 ¥{d.get('day_revenue',0):,.0f}</span>
+          <span>人力 -¥{d.get('day_labor',0):,.0f}</span>
+          <span>补贴 +¥{d.get('day_subsidy',0):,.0f}</span>
+          <span class="profit-net" style="color:{profit_color}">日净利 {d['day_profit']:+,.0f}元</span>
+          <span class="profit-caret" id="caret_{mdd}">&#9662;</span>
+        </div>"""
+
+        # 站点明细表
+        profit_table = ''
+        station_profits = d.get('station_profits', [])
+        if station_profits:
+            rows = ''
+            for sp in sorted(station_profits, key=lambda x: x['净利'], reverse=True):
+                pc = '#34d399' if sp['净利'] >= 0 else '#f87171'
+                subsidy_str = f'+{sp["补贴"]:.0f}' if sp['补贴'] > 0 else '0'
+                rows += f"""
+                <tr>
+                  <td>{sp['站点']}</td>
+                  <td>{sp['订单量']}</td>
+                  <td>{sp['编制']}人</td>
+                  <td>{sp['人均单量']}单/人</td>
+                  <td>¥{sp['结算收入']:,.0f}</td>
+                  <td>¥{sp['骑手费收入']:,.0f}</td>
+                  <td>-¥{sp['人力成本']:,.0f}</td>
+                  <td>{subsidy_str}</td>
+                  <td style="color:{pc};font-weight:600">¥{sp['净利']:+,.0f}</td>
+                </tr>"""
+            profit_table = f"""
+        <div class="profit-table" id="profit_{mdd}" style="display:none">
+          <table>
+            <thead><tr>
+              <th>站点</th><th>单量</th><th>编制</th><th>人均</th>
+              <th>结算</th><th>骑手费</th><th>人力</th><th>补贴</th><th>净利</th>
+            </tr></thead>
+            <tbody>{rows}</tbody>
+          </table>
+        </div>"""
+
         cards_html += f"""
-      <a href="{mdd}.html" class="day-card">
-        <div class="row">
-          <div>
-            <div class="date">{d['date']} <span class="badge {badge_class}" style="margin-left:8px;">{d['coverage_label']}</span></div>
-            <div class="stats">
-              <span>{d['total']} 单</span><span>{d['stations']} 站</span><span>{d['done']} 送达</span><span>{d['canc']} 取消</span><span>{d['time_range']}</span>
+      <div class="day-card">
+        <a href="{mdd}.html" class="day-card-link">
+          <div class="row">
+            <div>
+              <div class="date">{d['date']} <span class="badge {badge_class}" style="margin-left:8px;">{d['coverage_label']}</span></div>
+              <div class="stats">
+                <span>{d['total']} 单</span><span>{d['stations']} 站</span><span>{d['done']} 送达</span><span>{d['canc']} 取消</span><span>{d['time_range']}</span>
+              </div>
             </div>
+            <span class="arrow">&rarr;</span>
           </div>
-          <span class="arrow">&rarr;</span>
-        </div>
-      </a>"""
+        </a>
+        {profit_row}
+        {profit_table}
+      </div>"""
 
     now_str = datetime.now().strftime('%m-%d %H:%M')
     index_path = os.path.join(BASE_DIR, 'index.html')
@@ -919,19 +1025,19 @@ body::before {{
   backdrop-filter: blur(16px);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 22px 26px;
   margin-bottom: 14px;
   transition: all var(--transition);
-  cursor: pointer;
-  text-decoration: none;
-  display: block;
-  color: inherit;
+  overflow: hidden;
 }}
 .day-card:hover {{
-  transform: translateY(-3px);
   border-color: var(--border-glow);
   box-shadow: 0 12px 40px rgba(0,0,0,0.35), 0 0 0 1px var(--border-glow);
 }}
+.day-card-link {{
+  display: block; padding: 22px 26px;
+  text-decoration: none; color: inherit; transition: all var(--transition);
+}}
+.day-card-link:hover {{ transform: translateY(-2px); }}
 .day-card .row {{
   display: flex;
   align-items: center;
@@ -975,7 +1081,38 @@ body::before {{
   color: var(--text-muted);
   transition: all var(--transition);
 }}
-.day-card:hover .arrow {{ color: var(--accent); transform: translateX(4px); }}
+.day-card-link:hover .arrow {{ color: var(--accent); transform: translateX(4px); }}
+
+/* 盈利子表 */
+.profit-summary {{
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  padding: 10px 26px;
+  border-top: 1px solid var(--border);
+  background: rgba(129,140,248,0.03);
+  font-size: 12px; color: var(--text-dim);
+  cursor: pointer; user-select: none;
+  transition: background var(--transition);
+}}
+.profit-summary:hover {{ background: rgba(129,140,248,0.08); }}
+.profit-net {{ font-weight: 700; font-size: 13px; margin-left: auto; }}
+.profit-caret {{ font-size: 10px; color: var(--text-muted); transition: transform 0.2s; }}
+.profit-table {{
+  border-top: 1px solid var(--border);
+  padding: 8px 22px 14px;
+  background: rgba(10,14,22,0.5);
+}}
+.profit-table table {{ width: 100%; border-collapse: collapse; font-size: 11px; }}
+.profit-table th {{
+  background: transparent; color: var(--text-muted); font-weight: 600;
+  padding: 7px 8px; text-align: left; font-size: 10px;
+  text-transform: uppercase; letter-spacing: 0.3px;
+  border-bottom: 1px solid var(--border);
+}}
+.profit-table td {{
+  padding: 5px 8px; color: var(--text-dim);
+  border-bottom: 1px solid rgba(148,163,184,0.04);
+}}
+.profit-table tr:last-child td {{ border-bottom: none; }}
 
 .summary-bar {{
   display: grid;
@@ -1050,6 +1187,20 @@ body::before {{
   </div>
 
 </div>
+
+<script>
+function toggleProfit(id) {{
+  var tbl = document.getElementById('profit_' + id);
+  var caret = document.getElementById('caret_' + id);
+  if (tbl.style.display === 'none' || tbl.style.display === '') {{
+    tbl.style.display = 'block';
+    if (caret) caret.style.transform = 'rotate(180deg)';
+  }} else {{
+    tbl.style.display = 'none';
+    if (caret) caret.style.transform = 'rotate(0deg)';
+  }}
+}}
+</script>
 
 </body>
 </html>"""

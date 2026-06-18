@@ -75,19 +75,19 @@ body::before {
   backdrop-filter: blur(16px);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 22px 26px;
   margin-bottom: 14px;
   transition: all var(--transition);
-  cursor: pointer;
-  text-decoration: none;
-  display: block;
-  color: inherit;
+  overflow: hidden;
 }
 .day-card:hover {
-  transform: translateY(-3px);
   border-color: var(--border-glow);
   box-shadow: 0 12px 40px rgba(0,0,0,0.35), 0 0 0 1px var(--border-glow);
 }
+.day-card-link {
+  display: block; padding: 22px 26px;
+  text-decoration: none; color: inherit; transition: all var(--transition);
+}
+.day-card-link:hover { transform: translateY(-2px); }
 .day-card .row {
   display: flex;
   align-items: center;
@@ -131,7 +131,38 @@ body::before {
   color: var(--text-muted);
   transition: all var(--transition);
 }
-.day-card:hover .arrow { color: var(--accent); transform: translateX(4px); }
+.day-card-link:hover .arrow { color: var(--accent); transform: translateX(4px); }
+
+/* 盈利子表 */
+.profit-summary {
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  padding: 10px 26px;
+  border-top: 1px solid var(--border);
+  background: rgba(129,140,248,0.03);
+  font-size: 12px; color: var(--text-dim);
+  cursor: pointer; user-select: none;
+  transition: background var(--transition);
+}
+.profit-summary:hover { background: rgba(129,140,248,0.08); }
+.profit-net { font-weight: 700; font-size: 13px; margin-left: auto; }
+.profit-caret { font-size: 10px; color: var(--text-muted); transition: transform 0.2s; }
+.profit-table {
+  border-top: 1px solid var(--border);
+  padding: 8px 22px 14px;
+  background: rgba(10,14,22,0.5);
+}
+.profit-table table { width: 100%; border-collapse: collapse; font-size: 11px; }
+.profit-table th {
+  background: transparent; color: var(--text-muted); font-weight: 600;
+  padding: 7px 8px; text-align: left; font-size: 10px;
+  text-transform: uppercase; letter-spacing: 0.3px;
+  border-bottom: 1px solid var(--border);
+}
+.profit-table td {
+  padding: 5px 8px; color: var(--text-dim);
+  border-bottom: 1px solid rgba(148,163,184,0.04);
+}
+.profit-table tr:last-child td { border-bottom: none; }
 
 .summary-bar {
   display: grid;
@@ -177,7 +208,7 @@ body::before {
 
 <div class="header">
   <h1>接力送 · 日订单运营看板</h1>
-  <div class="sub">分段履约站点每日订单数据 &middot; 自动更新 &middot; <span id="updateTime">06-18 22:25</span></div>
+  <div class="sub">分段履约站点每日订单数据 &middot; 自动更新 &middot; <span id="updateTime">06-18 23:27</span></div>
 </div>
 
 <div class="container">
@@ -201,143 +232,947 @@ body::before {
     </div>
   </div>
 
-      <a href="0618.html" class="day-card">
-        <div class="row">
-          <div>
-            <div class="date">2026-06-18 <span class="badge badge-new" style="margin-left:8px;">全天数据</span></div>
-            <div class="stats">
-              <span>886 单</span><span>14 站</span><span>822 送达</span><span>64 取消</span><span>00:44-19:07</span>
+      <div class="day-card">
+        <a href="0618.html" class="day-card-link">
+          <div class="row">
+            <div>
+              <div class="date">2026-06-18 <span class="badge badge-new" style="margin-left:8px;">全天数据</span></div>
+              <div class="stats">
+                <span>886 单</span><span>14 站</span><span>822 送达</span><span>64 取消</span><span>00:44-19:07</span>
+              </div>
             </div>
+            <span class="arrow">&rarr;</span>
           </div>
-          <span class="arrow">&rarr;</span>
+        </a>
+        
+        <div class="profit-summary" onclick="toggleProfit('0618')">
+          <span>结算 ¥2,219</span>
+          <span>人力 -¥2,790</span>
+          <span>补贴 +¥1,200</span>
+          <span class="profit-net" style="color:#34d399">日净利 +592元</span>
+          <span class="profit-caret" id="caret_0618">&#9662;</span>
         </div>
-      </a>
-      <a href="0617.html" class="day-card">
-        <div class="row">
-          <div>
-            <div class="date">2026-06-17 <span class="badge badge-new" style="margin-left:8px;">近全天数据</span></div>
-            <div class="stats">
-              <span>572 单</span><span>11 站</span><span>543 送达</span><span>29 取消</span><span>07:54-19:09</span>
+        
+        <div class="profit-table" id="profit_0618" style="display:none">
+          <table>
+            <thead><tr>
+              <th>站点</th><th>单量</th><th>编制</th><th>人均</th>
+              <th>结算</th><th>骑手费</th><th>人力</th><th>补贴</th><th>净利</th>
+            </tr></thead>
+            <tbody>
+                <tr>
+                  <td>中大附属第六医院</td>
+                  <td>156</td>
+                  <td>6人</td>
+                  <td>26.0单/人</td>
+                  <td>¥390</td>
+                  <td>¥156</td>
+                  <td>-¥540</td>
+                  <td>+400</td>
+                  <td style="color:#34d399;font-weight:600">¥+403</td>
+                </tr>
+                <tr>
+                  <td>绿地星玥</td>
+                  <td>86</td>
+                  <td>4人</td>
+                  <td>21.5单/人</td>
+                  <td>¥215</td>
+                  <td>¥86</td>
+                  <td>-¥360</td>
+                  <td>+240</td>
+                  <td style="color:#34d399;font-weight:600">¥+178</td>
+                </tr>
+                <tr>
+                  <td>和业广场</td>
+                  <td>82</td>
+                  <td>3人</td>
+                  <td>27.3单/人</td>
+                  <td>¥205</td>
+                  <td>¥82</td>
+                  <td>-¥270</td>
+                  <td>+160</td>
+                  <td style="color:#34d399;font-weight:600">¥+174</td>
+                </tr>
+                <tr>
+                  <td>珠江国际轻纺城</td>
+                  <td>70</td>
+                  <td>3人</td>
+                  <td>23.3单/人</td>
+                  <td>¥175</td>
+                  <td>¥70</td>
+                  <td>-¥270</td>
+                  <td>+160</td>
+                  <td style="color:#34d399;font-weight:600">¥+132</td>
+                </tr>
+                <tr>
+                  <td>中大附三岭南医院</td>
+                  <td>56</td>
+                  <td>2人</td>
+                  <td>28.0单/人</td>
+                  <td>¥140</td>
+                  <td>¥56</td>
+                  <td>-¥180</td>
+                  <td>+80</td>
+                  <td style="color:#34d399;font-weight:600">¥+93</td>
+                </tr>
+                <tr>
+                  <td>万菱广场</td>
+                  <td>55</td>
+                  <td>2人</td>
+                  <td>27.5单/人</td>
+                  <td>¥138</td>
+                  <td>¥55</td>
+                  <td>-¥180</td>
+                  <td>+80</td>
+                  <td style="color:#34d399;font-weight:600">¥+89</td>
+                </tr>
+                <tr>
+                  <td>金鹰大厦</td>
+                  <td>45</td>
+                  <td>2人</td>
+                  <td>22.5单/人</td>
+                  <td>¥112</td>
+                  <td>¥45</td>
+                  <td>-¥180</td>
+                  <td>+80</td>
+                  <td style="color:#34d399;font-weight:600">¥+54</td>
+                </tr>
+                <tr>
+                  <td>汇德国际</td>
+                  <td>29</td>
+                  <td>2人</td>
+                  <td>14.5单/人</td>
+                  <td>¥72</td>
+                  <td>¥29</td>
+                  <td>-¥180</td>
+                  <td>0</td>
+                  <td style="color:#f87171;font-weight:600">¥-82</td>
+                </tr>
+                <tr>
+                  <td>万科欧泊</td>
+                  <td>47</td>
+                  <td>3人</td>
+                  <td>15.7单/人</td>
+                  <td>¥118</td>
+                  <td>¥47</td>
+                  <td>-¥270</td>
+                  <td>0</td>
+                  <td style="color:#f87171;font-weight:600">¥-109</td>
+                </tr>
+                <tr>
+                  <td>华林国际C馆</td>
+                  <td>5</td>
+                  <td>2人</td>
+                  <td>2.5单/人</td>
+                  <td>¥12</td>
+                  <td>¥5</td>
+                  <td>-¥180</td>
+                  <td>0</td>
+                  <td style="color:#f87171;font-weight:600">¥-166</td>
+                </tr>
+                <tr>
+                  <td>云升科技园</td>
+                  <td>3</td>
+                  <td>2人</td>
+                  <td>1.5单/人</td>
+                  <td>¥8</td>
+                  <td>¥3</td>
+                  <td>-¥180</td>
+                  <td>0</td>
+                  <td style="color:#f87171;font-weight:600">¥-173</td>
+                </tr></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="day-card">
+        <a href="0617.html" class="day-card-link">
+          <div class="row">
+            <div>
+              <div class="date">2026-06-17 <span class="badge badge-new" style="margin-left:8px;">近全天数据</span></div>
+              <div class="stats">
+                <span>572 单</span><span>11 站</span><span>543 送达</span><span>29 取消</span><span>07:54-19:09</span>
+              </div>
             </div>
+            <span class="arrow">&rarr;</span>
           </div>
-          <span class="arrow">&rarr;</span>
+        </a>
+        
+        <div class="profit-summary" onclick="toggleProfit('0617')">
+          <span>结算 ¥1,438</span>
+          <span>人力 -¥1,980</span>
+          <span>补贴 +¥560</span>
+          <span class="profit-net" style="color:#f87171">日净利 -8元</span>
+          <span class="profit-caret" id="caret_0617">&#9662;</span>
         </div>
-      </a>
-      <a href="0616.html" class="day-card">
-        <div class="row">
-          <div>
-            <div class="date">2026-06-16 <span class="badge badge-new" style="margin-left:8px;">全天数据</span></div>
-            <div class="stats">
-              <span>309 单</span><span>7 站</span><span>297 送达</span><span>12 取消</span><span>00:09-21:50</span>
+        
+        <div class="profit-table" id="profit_0617" style="display:none">
+          <table>
+            <thead><tr>
+              <th>站点</th><th>单量</th><th>编制</th><th>人均</th>
+              <th>结算</th><th>骑手费</th><th>人力</th><th>补贴</th><th>净利</th>
+            </tr></thead>
+            <tbody>
+                <tr>
+                  <td>绿地星玥</td>
+                  <td>123</td>
+                  <td>5人</td>
+                  <td>24.6单/人</td>
+                  <td>¥308</td>
+                  <td>¥123</td>
+                  <td>-¥450</td>
+                  <td>+320</td>
+                  <td style="color:#34d399;font-weight:600">¥+297</td>
+                </tr>
+                <tr>
+                  <td>中大附属第六医院</td>
+                  <td>62</td>
+                  <td>2人</td>
+                  <td>31.0单/人</td>
+                  <td>¥155</td>
+                  <td>¥62</td>
+                  <td>-¥180</td>
+                  <td>+80</td>
+                  <td style="color:#34d399;font-weight:600">¥+114</td>
+                </tr>
+                <tr>
+                  <td>和业广场</td>
+                  <td>62</td>
+                  <td>3人</td>
+                  <td>20.7单/人</td>
+                  <td>¥155</td>
+                  <td>¥62</td>
+                  <td>-¥270</td>
+                  <td>+160</td>
+                  <td style="color:#34d399;font-weight:600">¥+104</td>
+                </tr>
+                <tr>
+                  <td>金鹰大厦</td>
+                  <td>38</td>
+                  <td>2人</td>
+                  <td>19.0单/人</td>
+                  <td>¥95</td>
+                  <td>¥38</td>
+                  <td>-¥180</td>
+                  <td>0</td>
+                  <td style="color:#f87171;font-weight:600">¥-50</td>
+                </tr>
+                <tr>
+                  <td>万菱广场</td>
+                  <td>35</td>
+                  <td>2人</td>
+                  <td>17.5单/人</td>
+                  <td>¥88</td>
+                  <td>¥35</td>
+                  <td>-¥180</td>
+                  <td>0</td>
+                  <td style="color:#f87171;font-weight:600">¥-61</td>
+                </tr>
+                <tr>
+                  <td>珠江国际轻纺城</td>
+                  <td>48</td>
+                  <td>3人</td>
+                  <td>16.0单/人</td>
+                  <td>¥120</td>
+                  <td>¥48</td>
+                  <td>-¥270</td>
+                  <td>0</td>
+                  <td style="color:#f87171;font-weight:600">¥-105</td>
+                </tr>
+                <tr>
+                  <td>华林国际C馆</td>
+                  <td>13</td>
+                  <td>2人</td>
+                  <td>6.5单/人</td>
+                  <td>¥32</td>
+                  <td>¥13</td>
+                  <td>-¥180</td>
+                  <td>0</td>
+                  <td style="color:#f87171;font-weight:600">¥-138</td>
+                </tr>
+                <tr>
+                  <td>万科欧泊</td>
+                  <td>30</td>
+                  <td>3人</td>
+                  <td>10.0单/人</td>
+                  <td>¥75</td>
+                  <td>¥30</td>
+                  <td>-¥270</td>
+                  <td>0</td>
+                  <td style="color:#f87171;font-weight:600">¥-168</td>
+                </tr></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="day-card">
+        <a href="0616.html" class="day-card-link">
+          <div class="row">
+            <div>
+              <div class="date">2026-06-16 <span class="badge badge-new" style="margin-left:8px;">全天数据</span></div>
+              <div class="stats">
+                <span>309 单</span><span>7 站</span><span>297 送达</span><span>12 取消</span><span>00:09-21:50</span>
+              </div>
             </div>
+            <span class="arrow">&rarr;</span>
           </div>
-          <span class="arrow">&rarr;</span>
+        </a>
+        
+        <div class="profit-summary" onclick="toggleProfit('0616')">
+          <span>结算 ¥1,082</span>
+          <span>人力 -¥1,800</span>
+          <span>补贴 +¥480</span>
+          <span class="profit-net" style="color:#f87171">日净利 -262元</span>
+          <span class="profit-caret" id="caret_0616">&#9662;</span>
         </div>
-      </a>
-      <a href="0615.html" class="day-card">
-        <div class="row">
-          <div>
-            <div class="date">2026-06-15 <span class="badge badge-pending" style="margin-left:8px;">非全天数据</span></div>
-            <div class="stats">
-              <span>337 单</span><span>7 站</span><span>289 送达</span><span>48 取消</span><span>10:17-19:21</span>
+        
+        <div class="profit-table" id="profit_0616" style="display:none">
+          <table>
+            <thead><tr>
+              <th>站点</th><th>单量</th><th>编制</th><th>人均</th>
+              <th>结算</th><th>骑手费</th><th>人力</th><th>补贴</th><th>净利</th>
+            </tr></thead>
+            <tbody>
+                <tr>
+                  <td>绿地星玥</td>
+                  <td>134</td>
+                  <td>5人</td>
+                  <td>26.8单/人</td>
+                  <td>¥335</td>
+                  <td>¥134</td>
+                  <td>-¥450</td>
+                  <td>+320</td>
+                  <td style="color:#34d399;font-weight:600">¥+336</td>
+                </tr>
+                <tr>
+                  <td>和业广场</td>
+                  <td>70</td>
+                  <td>3人</td>
+                  <td>23.3单/人</td>
+                  <td>¥175</td>
+                  <td>¥70</td>
+                  <td>-¥270</td>
+                  <td>+160</td>
+                  <td style="color:#34d399;font-weight:600">¥+132</td>
+                </tr>
+                <tr>
+                  <td>万菱广场</td>
+                  <td>24</td>
+                  <td>2人</td>
+                  <td>12.0单/人</td>
+                  <td>¥60</td>
+                  <td>¥24</td>
+                  <td>-¥180</td>
+                  <td>0</td>
+                  <td style="color:#f87171;font-weight:600">¥-99</td>
+                </tr>
+                <tr>
+                  <td>华林国际C馆</td>
+                  <td>20</td>
+                  <td>2人</td>
+                  <td>10.0单/人</td>
+                  <td>¥50</td>
+                  <td>¥20</td>
+                  <td>-¥180</td>
+                  <td>0</td>
+                  <td style="color:#f87171;font-weight:600">¥-113</td>
+                </tr>
+                <tr>
+                  <td>金鹰大厦</td>
+                  <td>14</td>
+                  <td>2人</td>
+                  <td>7.0单/人</td>
+                  <td>¥35</td>
+                  <td>¥14</td>
+                  <td>-¥180</td>
+                  <td>0</td>
+                  <td style="color:#f87171;font-weight:600">¥-134</td>
+                </tr>
+                <tr>
+                  <td>万科欧泊</td>
+                  <td>34</td>
+                  <td>3人</td>
+                  <td>11.3单/人</td>
+                  <td>¥85</td>
+                  <td>¥34</td>
+                  <td>-¥270</td>
+                  <td>0</td>
+                  <td style="color:#f87171;font-weight:600">¥-154</td>
+                </tr>
+                <tr>
+                  <td>珠江国际轻纺城</td>
+                  <td>13</td>
+                  <td>3人</td>
+                  <td>4.3单/人</td>
+                  <td>¥32</td>
+                  <td>¥13</td>
+                  <td>-¥270</td>
+                  <td>0</td>
+                  <td style="color:#f87171;font-weight:600">¥-228</td>
+                </tr></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="day-card">
+        <a href="0615.html" class="day-card-link">
+          <div class="row">
+            <div>
+              <div class="date">2026-06-15 <span class="badge badge-pending" style="margin-left:8px;">非全天数据</span></div>
+              <div class="stats">
+                <span>337 单</span><span>7 站</span><span>289 送达</span><span>48 取消</span><span>10:17-19:21</span>
+              </div>
             </div>
+            <span class="arrow">&rarr;</span>
           </div>
-          <span class="arrow">&rarr;</span>
+        </a>
+        
+        <div class="profit-summary" onclick="toggleProfit('0615')">
+          <span>结算 ¥1,180</span>
+          <span>人力 -¥1,800</span>
+          <span>补贴 +¥320</span>
+          <span class="profit-net" style="color:#f87171">日净利 -324元</span>
+          <span class="profit-caret" id="caret_0615">&#9662;</span>
         </div>
-      </a>
-      <a href="0614.html" class="day-card">
-        <div class="row">
-          <div>
-            <div class="date">2026-06-14 <span class="badge badge-new" style="margin-left:8px;">全天数据</span></div>
-            <div class="stats">
-              <span>301 单</span><span>2 站</span><span>260 送达</span><span>41 取消</span><span>03:37-23:51</span>
+        
+        <div class="profit-table" id="profit_0615" style="display:none">
+          <table>
+            <thead><tr>
+              <th>站点</th><th>单量</th><th>编制</th><th>人均</th>
+              <th>结算</th><th>骑手费</th><th>人力</th><th>补贴</th><th>净利</th>
+            </tr></thead>
+            <tbody>
+                <tr>
+                  <td>绿地星玥</td>
+                  <td>149</td>
+                  <td>5人</td>
+                  <td>29.8单/人</td>
+                  <td>¥372</td>
+                  <td>¥149</td>
+                  <td>-¥450</td>
+                  <td>+320</td>
+                  <td style="color:#34d399;font-weight:600">¥+388</td>
+                </tr>
+                <tr>
+                  <td>万菱广场</td>
+                  <td>33</td>
+                  <td>2人</td>
+                  <td>16.5单/人</td>
+                  <td>¥82</td>
+                  <td>¥33</td>
+                  <td>-¥180</td>
+                  <td>0</td>
+                  <td style="color:#f87171;font-weight:600">¥-68</td>
+                </tr>
+                <tr>
+                  <td>金鹰大厦</td>
+                  <td>27</td>
+                  <td>2人</td>
+                  <td>13.5单/人</td>
+                  <td>¥68</td>
+                  <td>¥27</td>
+                  <td>-¥180</td>
+                  <td>0</td>
+                  <td style="color:#f87171;font-weight:600">¥-89</td>
+                </tr>
+                <tr>
+                  <td>华林国际C馆</td>
+                  <td>21</td>
+                  <td>2人</td>
+                  <td>10.5单/人</td>
+                  <td>¥52</td>
+                  <td>¥21</td>
+                  <td>-¥180</td>
+                  <td>0</td>
+                  <td style="color:#f87171;font-weight:600">¥-110</td>
+                </tr>
+                <tr>
+                  <td>万科欧泊</td>
+                  <td>40</td>
+                  <td>3人</td>
+                  <td>13.3单/人</td>
+                  <td>¥100</td>
+                  <td>¥40</td>
+                  <td>-¥270</td>
+                  <td>0</td>
+                  <td style="color:#f87171;font-weight:600">¥-133</td>
+                </tr>
+                <tr>
+                  <td>和业广场</td>
+                  <td>37</td>
+                  <td>3人</td>
+                  <td>12.3单/人</td>
+                  <td>¥92</td>
+                  <td>¥37</td>
+                  <td>-¥270</td>
+                  <td>0</td>
+                  <td style="color:#f87171;font-weight:600">¥-144</td>
+                </tr>
+                <tr>
+                  <td>珠江国际轻纺城</td>
+                  <td>30</td>
+                  <td>3人</td>
+                  <td>10.0单/人</td>
+                  <td>¥75</td>
+                  <td>¥30</td>
+                  <td>-¥270</td>
+                  <td>0</td>
+                  <td style="color:#f87171;font-weight:600">¥-168</td>
+                </tr></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="day-card">
+        <a href="0614.html" class="day-card-link">
+          <div class="row">
+            <div>
+              <div class="date">2026-06-14 <span class="badge badge-new" style="margin-left:8px;">全天数据</span></div>
+              <div class="stats">
+                <span>301 单</span><span>2 站</span><span>260 送达</span><span>41 取消</span><span>03:37-23:51</span>
+              </div>
             </div>
+            <span class="arrow">&rarr;</span>
           </div>
-          <span class="arrow">&rarr;</span>
+        </a>
+        
+        <div class="profit-summary" onclick="toggleProfit('0614')">
+          <span>结算 ¥1,054</span>
+          <span>人力 -¥720</span>
+          <span>补贴 +¥480</span>
+          <span class="profit-net" style="color:#34d399">日净利 +807元</span>
+          <span class="profit-caret" id="caret_0614">&#9662;</span>
         </div>
-      </a>
-      <a href="0613.html" class="day-card">
-        <div class="row">
-          <div>
-            <div class="date">2026-06-13 <span class="badge badge-new" style="margin-left:8px;">全天数据</span></div>
-            <div class="stats">
-              <span>257 单</span><span>2 站</span><span>196 送达</span><span>61 取消</span><span>03:42-19:18</span>
+        
+        <div class="profit-table" id="profit_0614" style="display:none">
+          <table>
+            <thead><tr>
+              <th>站点</th><th>单量</th><th>编制</th><th>人均</th>
+              <th>结算</th><th>骑手费</th><th>人力</th><th>补贴</th><th>净利</th>
+            </tr></thead>
+            <tbody>
+                <tr>
+                  <td>绿地星玥</td>
+                  <td>230</td>
+                  <td>5人</td>
+                  <td>46.0单/人</td>
+                  <td>¥575</td>
+                  <td>¥230</td>
+                  <td>-¥450</td>
+                  <td>+320</td>
+                  <td style="color:#34d399;font-weight:600">¥+672</td>
+                </tr>
+                <tr>
+                  <td>万科欧泊</td>
+                  <td>71</td>
+                  <td>3人</td>
+                  <td>23.7单/人</td>
+                  <td>¥178</td>
+                  <td>¥71</td>
+                  <td>-¥270</td>
+                  <td>+160</td>
+                  <td style="color:#34d399;font-weight:600">¥+135</td>
+                </tr></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="day-card">
+        <a href="0613.html" class="day-card-link">
+          <div class="row">
+            <div>
+              <div class="date">2026-06-13 <span class="badge badge-new" style="margin-left:8px;">全天数据</span></div>
+              <div class="stats">
+                <span>257 单</span><span>2 站</span><span>196 送达</span><span>61 取消</span><span>03:42-19:18</span>
+              </div>
             </div>
+            <span class="arrow">&rarr;</span>
           </div>
-          <span class="arrow">&rarr;</span>
+        </a>
+        
+        <div class="profit-summary" onclick="toggleProfit('0613')">
+          <span>结算 ¥900</span>
+          <span>人力 -¥720</span>
+          <span>补贴 +¥320</span>
+          <span class="profit-net" style="color:#34d399">日净利 +493元</span>
+          <span class="profit-caret" id="caret_0613">&#9662;</span>
         </div>
-      </a>
-      <a href="0612.html" class="day-card">
-        <div class="row">
-          <div>
-            <div class="date">2026-06-12 <span class="badge badge-new" style="margin-left:8px;">近全天数据</span></div>
-            <div class="stats">
-              <span>297 单</span><span>6 站</span><span>294 送达</span><span>3 取消</span><span>07:18-19:20</span>
+        
+        <div class="profit-table" id="profit_0613" style="display:none">
+          <table>
+            <thead><tr>
+              <th>站点</th><th>单量</th><th>编制</th><th>人均</th>
+              <th>结算</th><th>骑手费</th><th>人力</th><th>补贴</th><th>净利</th>
+            </tr></thead>
+            <tbody>
+                <tr>
+                  <td>绿地星玥</td>
+                  <td>214</td>
+                  <td>5人</td>
+                  <td>42.8单/人</td>
+                  <td>¥535</td>
+                  <td>¥214</td>
+                  <td>-¥450</td>
+                  <td>+320</td>
+                  <td style="color:#34d399;font-weight:600">¥+616</td>
+                </tr>
+                <tr>
+                  <td>万科欧泊</td>
+                  <td>43</td>
+                  <td>3人</td>
+                  <td>14.3单/人</td>
+                  <td>¥108</td>
+                  <td>¥43</td>
+                  <td>-¥270</td>
+                  <td>0</td>
+                  <td style="color:#f87171;font-weight:600">¥-123</td>
+                </tr></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="day-card">
+        <a href="0612.html" class="day-card-link">
+          <div class="row">
+            <div>
+              <div class="date">2026-06-12 <span class="badge badge-new" style="margin-left:8px;">近全天数据</span></div>
+              <div class="stats">
+                <span>297 单</span><span>6 站</span><span>294 送达</span><span>3 取消</span><span>07:18-19:20</span>
+              </div>
             </div>
+            <span class="arrow">&rarr;</span>
           </div>
-          <span class="arrow">&rarr;</span>
+        </a>
+        
+        <div class="profit-summary" onclick="toggleProfit('0612')">
+          <span>结算 ¥1,040</span>
+          <span>人力 -¥1,530</span>
+          <span>补贴 +¥400</span>
+          <span class="profit-net" style="color:#f87171">日净利 -110元</span>
+          <span class="profit-caret" id="caret_0612">&#9662;</span>
         </div>
-      </a>
-      <a href="0611.html" class="day-card">
-        <div class="row">
-          <div>
-            <div class="date">2026-06-11 <span class="badge badge-pending" style="margin-left:8px;">非全天数据</span></div>
-            <div class="stats">
-              <span>169 单</span><span>3 站</span><span>166 送达</span><span>3 取消</span><span>11:35-19:13</span>
+        
+        <div class="profit-table" id="profit_0612" style="display:none">
+          <table>
+            <thead><tr>
+              <th>站点</th><th>单量</th><th>编制</th><th>人均</th>
+              <th>结算</th><th>骑手费</th><th>人力</th><th>补贴</th><th>净利</th>
+            </tr></thead>
+            <tbody>
+                <tr>
+                  <td>绿地星玥</td>
+                  <td>151</td>
+                  <td>5人</td>
+                  <td>30.2单/人</td>
+                  <td>¥378</td>
+                  <td>¥151</td>
+                  <td>-¥450</td>
+                  <td>+320</td>
+                  <td style="color:#34d399;font-weight:600">¥+395</td>
+                </tr>
+                <tr>
+                  <td>万菱广场</td>
+                  <td>41</td>
+                  <td>2人</td>
+                  <td>20.5单/人</td>
+                  <td>¥102</td>
+                  <td>¥41</td>
+                  <td>-¥180</td>
+                  <td>+80</td>
+                  <td style="color:#34d399;font-weight:600">¥+40</td>
+                </tr>
+                <tr>
+                  <td>万科欧泊</td>
+                  <td>46</td>
+                  <td>3人</td>
+                  <td>15.3单/人</td>
+                  <td>¥115</td>
+                  <td>¥46</td>
+                  <td>-¥270</td>
+                  <td>0</td>
+                  <td style="color:#f87171;font-weight:600">¥-112</td>
+                </tr>
+                <tr>
+                  <td>金鹰大厦</td>
+                  <td>20</td>
+                  <td>2人</td>
+                  <td>10.0单/人</td>
+                  <td>¥50</td>
+                  <td>¥20</td>
+                  <td>-¥180</td>
+                  <td>0</td>
+                  <td style="color:#f87171;font-weight:600">¥-113</td>
+                </tr>
+                <tr>
+                  <td>和业广场</td>
+                  <td>36</td>
+                  <td>3人</td>
+                  <td>12.0单/人</td>
+                  <td>¥90</td>
+                  <td>¥36</td>
+                  <td>-¥270</td>
+                  <td>0</td>
+                  <td style="color:#f87171;font-weight:600">¥-147</td>
+                </tr>
+                <tr>
+                  <td>华林国际C馆</td>
+                  <td>3</td>
+                  <td>2人</td>
+                  <td>1.5单/人</td>
+                  <td>¥8</td>
+                  <td>¥3</td>
+                  <td>-¥180</td>
+                  <td>0</td>
+                  <td style="color:#f87171;font-weight:600">¥-173</td>
+                </tr></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="day-card">
+        <a href="0611.html" class="day-card-link">
+          <div class="row">
+            <div>
+              <div class="date">2026-06-11 <span class="badge badge-pending" style="margin-left:8px;">非全天数据</span></div>
+              <div class="stats">
+                <span>169 单</span><span>3 站</span><span>166 送达</span><span>3 取消</span><span>11:35-19:13</span>
+              </div>
             </div>
+            <span class="arrow">&rarr;</span>
           </div>
-          <span class="arrow">&rarr;</span>
+        </a>
+        
+        <div class="profit-summary" onclick="toggleProfit('0611')">
+          <span>结算 ¥592</span>
+          <span>人力 -¥900</span>
+          <span>补贴 +¥320</span>
+          <span class="profit-net" style="color:#34d399">日净利 +2元</span>
+          <span class="profit-caret" id="caret_0611">&#9662;</span>
         </div>
-      </a>
-      <a href="0610.html" class="day-card">
-        <div class="row">
-          <div>
-            <div class="date">2026-06-10 <span class="badge badge-pending" style="margin-left:8px;">非全天数据</span></div>
-            <div class="stats">
-              <span>35 单</span><span>1 站</span><span>33 送达</span><span>2 取消</span><span>16:26-19:22</span>
+        
+        <div class="profit-table" id="profit_0611" style="display:none">
+          <table>
+            <thead><tr>
+              <th>站点</th><th>单量</th><th>编制</th><th>人均</th>
+              <th>结算</th><th>骑手费</th><th>人力</th><th>补贴</th><th>净利</th>
+            </tr></thead>
+            <tbody>
+                <tr>
+                  <td>绿地星玥</td>
+                  <td>122</td>
+                  <td>5人</td>
+                  <td>24.4单/人</td>
+                  <td>¥305</td>
+                  <td>¥122</td>
+                  <td>-¥450</td>
+                  <td>+320</td>
+                  <td style="color:#34d399;font-weight:600">¥+294</td>
+                </tr>
+                <tr>
+                  <td>万菱广场</td>
+                  <td>12</td>
+                  <td>2人</td>
+                  <td>6.0单/人</td>
+                  <td>¥30</td>
+                  <td>¥12</td>
+                  <td>-¥180</td>
+                  <td>0</td>
+                  <td style="color:#f87171;font-weight:600">¥-141</td>
+                </tr>
+                <tr>
+                  <td>万科欧泊</td>
+                  <td>35</td>
+                  <td>3人</td>
+                  <td>11.7单/人</td>
+                  <td>¥88</td>
+                  <td>¥35</td>
+                  <td>-¥270</td>
+                  <td>0</td>
+                  <td style="color:#f87171;font-weight:600">¥-151</td>
+                </tr></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="day-card">
+        <a href="0610.html" class="day-card-link">
+          <div class="row">
+            <div>
+              <div class="date">2026-06-10 <span class="badge badge-pending" style="margin-left:8px;">非全天数据</span></div>
+              <div class="stats">
+                <span>35 单</span><span>1 站</span><span>33 送达</span><span>2 取消</span><span>16:26-19:22</span>
+              </div>
             </div>
+            <span class="arrow">&rarr;</span>
           </div>
-          <span class="arrow">&rarr;</span>
+        </a>
+        
+        <div class="profit-summary" onclick="toggleProfit('0610')">
+          <span>结算 ¥122</span>
+          <span>人力 -¥270</span>
+          <span>补贴 +¥0</span>
+          <span class="profit-net" style="color:#f87171">日净利 -151元</span>
+          <span class="profit-caret" id="caret_0610">&#9662;</span>
         </div>
-      </a>
-      <a href="0609.html" class="day-card">
-        <div class="row">
-          <div>
-            <div class="date">2026-06-09 <span class="badge badge-pending" style="margin-left:8px;">非全天数据</span></div>
-            <div class="stats">
-              <span>21 单</span><span>1 站</span><span>21 送达</span><span>0 取消</span><span>17:09-19:08</span>
+        
+        <div class="profit-table" id="profit_0610" style="display:none">
+          <table>
+            <thead><tr>
+              <th>站点</th><th>单量</th><th>编制</th><th>人均</th>
+              <th>结算</th><th>骑手费</th><th>人力</th><th>补贴</th><th>净利</th>
+            </tr></thead>
+            <tbody>
+                <tr>
+                  <td>万科欧泊</td>
+                  <td>35</td>
+                  <td>3人</td>
+                  <td>11.7单/人</td>
+                  <td>¥88</td>
+                  <td>¥35</td>
+                  <td>-¥270</td>
+                  <td>0</td>
+                  <td style="color:#f87171;font-weight:600">¥-151</td>
+                </tr></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="day-card">
+        <a href="0609.html" class="day-card-link">
+          <div class="row">
+            <div>
+              <div class="date">2026-06-09 <span class="badge badge-pending" style="margin-left:8px;">非全天数据</span></div>
+              <div class="stats">
+                <span>21 单</span><span>1 站</span><span>21 送达</span><span>0 取消</span><span>17:09-19:08</span>
+              </div>
             </div>
+            <span class="arrow">&rarr;</span>
           </div>
-          <span class="arrow">&rarr;</span>
+        </a>
+        
+        <div class="profit-summary" onclick="toggleProfit('0609')">
+          <span>结算 ¥74</span>
+          <span>人力 -¥270</span>
+          <span>补贴 +¥0</span>
+          <span class="profit-net" style="color:#f87171">日净利 -200元</span>
+          <span class="profit-caret" id="caret_0609">&#9662;</span>
         </div>
-      </a>
-      <a href="0608.html" class="day-card">
-        <div class="row">
-          <div>
-            <div class="date">2026-06-08 <span class="badge badge-pending" style="margin-left:8px;">非全天数据</span></div>
-            <div class="stats">
-              <span>23 单</span><span>1 站</span><span>23 送达</span><span>0 取消</span><span>17:21-18:56</span>
+        
+        <div class="profit-table" id="profit_0609" style="display:none">
+          <table>
+            <thead><tr>
+              <th>站点</th><th>单量</th><th>编制</th><th>人均</th>
+              <th>结算</th><th>骑手费</th><th>人力</th><th>补贴</th><th>净利</th>
+            </tr></thead>
+            <tbody>
+                <tr>
+                  <td>万科欧泊</td>
+                  <td>21</td>
+                  <td>3人</td>
+                  <td>7.0单/人</td>
+                  <td>¥52</td>
+                  <td>¥21</td>
+                  <td>-¥270</td>
+                  <td>0</td>
+                  <td style="color:#f87171;font-weight:600">¥-200</td>
+                </tr></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="day-card">
+        <a href="0608.html" class="day-card-link">
+          <div class="row">
+            <div>
+              <div class="date">2026-06-08 <span class="badge badge-pending" style="margin-left:8px;">非全天数据</span></div>
+              <div class="stats">
+                <span>23 单</span><span>1 站</span><span>23 送达</span><span>0 取消</span><span>17:21-18:56</span>
+              </div>
             </div>
+            <span class="arrow">&rarr;</span>
           </div>
-          <span class="arrow">&rarr;</span>
+        </a>
+        
+        <div class="profit-summary" onclick="toggleProfit('0608')">
+          <span>结算 ¥80</span>
+          <span>人力 -¥270</span>
+          <span>补贴 +¥0</span>
+          <span class="profit-net" style="color:#f87171">日净利 -193元</span>
+          <span class="profit-caret" id="caret_0608">&#9662;</span>
         </div>
-      </a>
-      <a href="0607.html" class="day-card">
-        <div class="row">
-          <div>
-            <div class="date">2026-06-07 <span class="badge badge-pending" style="margin-left:8px;">非全天数据</span></div>
-            <div class="stats">
-              <span>26 单</span><span>1 站</span><span>26 送达</span><span>0 取消</span><span>16:46-19:00</span>
+        
+        <div class="profit-table" id="profit_0608" style="display:none">
+          <table>
+            <thead><tr>
+              <th>站点</th><th>单量</th><th>编制</th><th>人均</th>
+              <th>结算</th><th>骑手费</th><th>人力</th><th>补贴</th><th>净利</th>
+            </tr></thead>
+            <tbody>
+                <tr>
+                  <td>万科欧泊</td>
+                  <td>23</td>
+                  <td>3人</td>
+                  <td>7.7单/人</td>
+                  <td>¥58</td>
+                  <td>¥23</td>
+                  <td>-¥270</td>
+                  <td>0</td>
+                  <td style="color:#f87171;font-weight:600">¥-193</td>
+                </tr></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="day-card">
+        <a href="0607.html" class="day-card-link">
+          <div class="row">
+            <div>
+              <div class="date">2026-06-07 <span class="badge badge-pending" style="margin-left:8px;">非全天数据</span></div>
+              <div class="stats">
+                <span>26 单</span><span>1 站</span><span>26 送达</span><span>0 取消</span><span>16:46-19:00</span>
+              </div>
             </div>
+            <span class="arrow">&rarr;</span>
           </div>
-          <span class="arrow">&rarr;</span>
+        </a>
+        
+        <div class="profit-summary" onclick="toggleProfit('0607')">
+          <span>结算 ¥91</span>
+          <span>人力 -¥270</span>
+          <span>补贴 +¥0</span>
+          <span class="profit-net" style="color:#f87171">日净利 -182元</span>
+          <span class="profit-caret" id="caret_0607">&#9662;</span>
         </div>
-      </a>
+        
+        <div class="profit-table" id="profit_0607" style="display:none">
+          <table>
+            <thead><tr>
+              <th>站点</th><th>单量</th><th>编制</th><th>人均</th>
+              <th>结算</th><th>骑手费</th><th>人力</th><th>补贴</th><th>净利</th>
+            </tr></thead>
+            <tbody>
+                <tr>
+                  <td>万科欧泊</td>
+                  <td>26</td>
+                  <td>3人</td>
+                  <td>8.7单/人</td>
+                  <td>¥65</td>
+                  <td>¥26</td>
+                  <td>-¥270</td>
+                  <td>0</td>
+                  <td style="color:#f87171;font-weight:600">¥-182</td>
+                </tr></tbody>
+          </table>
+        </div>
+      </div>
   <div class="footer">
     接力送 &middot; 楼宇末端配送运营数据 &nbsp;|&nbsp; 数据来源: 美团校园订单详情导出
   </div>
 
 </div>
+
+<script>
+function toggleProfit(id) {
+  var tbl = document.getElementById('profit_' + id);
+  var caret = document.getElementById('caret_' + id);
+  if (tbl.style.display === 'none' || tbl.style.display === '') {
+    tbl.style.display = 'block';
+    if (caret) caret.style.transform = 'rotate(180deg)';
+  } else {
+    tbl.style.display = 'none';
+    if (caret) caret.style.transform = 'rotate(0deg)';
+  }
+}
+</script>
 
 </body>
 </html>
