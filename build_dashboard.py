@@ -1541,34 +1541,10 @@ if __name__ == '__main__':
         dates = discover_dates()
         summaries = []
         for d in dates:
-            date_dir = os.path.join(BASE_DIR, datetime.strptime(d, '%Y-%m-%d').strftime('%y-%m-%d'))
             try:
-                input_path = find_xls(date_dir)
-                df = pd.read_excel(input_path)
-                df = df[df['站点名称'].str.contains('分段履约', na=False)]
-                total = len(df)
-                stations = df['站点名称'].nunique()
-                done = (df['物流单状态'] == '已送达').sum()
-                canc = (df['物流单状态'] == '已取消').sum()
-                t_min = pd.to_datetime(df['下单时间']).min()
-                t_max = pd.to_datetime(df['下单时间']).max()
-                total_minutes = (t_max - t_min).total_seconds() / 60
-                if total_minutes > 900:
-                    coverage = '全天数据'
-                elif total_minutes > 600:
-                    coverage = '近全天数据'
-                else:
-                    coverage = '非全天数据'
-                summaries.append({
-                    'date': d,
-                    'total': total,
-                    'stations': stations,
-                    'done': done,
-                    'canc': canc,
-                    'time_range': f'{t_min.strftime("%H:%M")}-{t_max.strftime("%H:%M")}',
-                    'coverage_label': coverage,
-                })
-                print(f'  [{d}] {total}单 / {stations}站')
+                s = process_date(d)
+                summaries.append(s)
+                print(f'  [{d}] {s["total"]}单 / {s["stations"]}站')
             except Exception as e:
                 print(f'  [{d}] 跳过: {e}')
         print()
@@ -1579,40 +1555,17 @@ if __name__ == '__main__':
         date_str = arg
         try:
             summary = process_date(date_str)
-            print()
-            # 同时更新主页面
-            dates = discover_dates()
-            summaries = []
-            for d in dates:
-                date_dir = os.path.join(BASE_DIR, datetime.strptime(d, '%Y-%m-%d').strftime('%y-%m-%d'))
+            summaries = [summary]
+            # 同时收集其他日期摘要以更新主页面
+            for d in discover_dates():
+                if d == date_str:
+                    continue
                 try:
-                    input_path = find_xls(date_dir)
-                    df = pd.read_excel(input_path)
-                    df = df[df['站点名称'].str.contains('分段履约', na=False)]
-                    total = len(df)
-                    stations = df['站点名称'].nunique()
-                    done = (df['物流单状态'] == '已送达').sum()
-                    canc = (df['物流单状态'] == '已取消').sum()
-                    t_min = pd.to_datetime(df['下单时间']).min()
-                    t_max = pd.to_datetime(df['下单时间']).max()
-                    total_minutes = (t_max - t_min).total_seconds() / 60
-                    if total_minutes > 900:
-                        coverage = '全天数据'
-                    elif total_minutes > 600:
-                        coverage = '近全天数据'
-                    else:
-                        coverage = '非全天数据'
-                    summaries.append({
-                        'date': d,
-                        'total': total,
-                        'stations': stations,
-                        'done': done,
-                        'canc': canc,
-                        'time_range': f'{t_min.strftime("%H:%M")}-{t_max.strftime("%H:%M")}',
-                        'coverage_label': coverage,
-                    })
+                    s = process_date(d)
+                    summaries.append(s)
                 except Exception as e:
                     print(f'  [{d}] 跳过: {e}')
+            print()
             update_index(summaries)
         except Exception as e:
             print(f'错误: {e}')
