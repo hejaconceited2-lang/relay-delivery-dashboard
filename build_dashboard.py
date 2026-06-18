@@ -1219,7 +1219,11 @@ def update_index(dates_summary):
     # 生成日期卡片
     cards_html = ''
     for d in dates_summary:
-        badge_class = 'badge-new' if d['coverage_label'] in ('全天数据', '近全天数据') else 'badge-pending'
+        is_latest = d['date'] == latest_date
+        if is_latest:
+            badge_html = f' <span class="badge {"badge-new" if d["coverage_label"] in ("全天数据","近全天数据") else "badge-pending"}" style="margin-left:8px;">{d["coverage_label"]}</span>'
+        else:
+            badge_html = ''
         mdd = datetime.strptime(d['date'], '%Y-%m-%d').strftime('%m%d')
         profit_color = '#34d399' if d.get('day_profit', 0) >= 0 else '#f87171'
 
@@ -1240,7 +1244,7 @@ def update_index(dates_summary):
         <a href="{mdd}.html" class="day-card-link">
           <div class="row">
             <div>
-              <div class="date">{d['date']} <span class="badge {badge_class}" style="margin-left:8px;">{d['coverage_label']}</span></div>
+              <div class="date">{d['date']}{badge_html}</div>
               <div class="stats">
                 <span>{d['total']} 单</span><span>{d['stations']} 站</span><span>{d['done']} 送达</span><span>{d['canc']} 取消</span><span>{d['time_range']}</span>
               </div>
