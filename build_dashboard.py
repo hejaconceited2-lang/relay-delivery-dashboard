@@ -847,6 +847,11 @@ function switchTab(tabId) {{
 
     day_profit = round(day_total_revenue + day_total_subsidy - day_total_labor - day_total_material, 1)
 
+    # ── 生成单日 UE 分析页 ──
+    build_ue_page(date_display, total, len(st_ours), station_profits,
+                  day_profit, day_total_revenue, day_total_subsidy, day_total_labor,
+                  t_min, t_max)
+
     # 返回摘要用于更新主页面
     return {
         'date': date_display,
@@ -862,6 +867,339 @@ function switchTab(tabId) {{
         'day_subsidy': round(day_total_subsidy, 1),
         'day_labor': round(day_total_labor, 1),
     }
+
+
+def build_ue_page(date_display, total_orders, ours_count, station_profits,
+                  day_profit, day_revenue, day_subsidy, day_labor,
+                  t_min, t_max):
+    """生成单日 UE 盈利分析页面 MMDD_ue.html"""
+    date_obj = datetime.strptime(date_display, '%Y-%m-%d')
+    mdd = date_obj.strftime('%m%d')
+    date_short = date_obj.strftime('%y-%m-%d')
+    ue_path = os.path.join(BASE_DIR, f'{mdd}_ue.html')
+    date_dir = os.path.join(BASE_DIR, date_short)
+    ue_dir_path = os.path.join(date_dir, 'ue_analysis.html')
+
+    profit_color = '#34d399' if day_profit >= 0 else '#f87171'
+    day_material = ours_count * MATERIAL_PER_STATION
+
+    # ── KPI 卡片 ──
+    profit_rate = (day_profit / day_revenue * 100) if day_revenue > 0 else 0
+
+    # ── 站点净利排名图 ──
+    sp_sorted = sorted(station_profits, key=lambda x: x['净利'])
+    fig_rank = go.Figure()
+    fig_rank.add_trace(go.Bar(
+        y=[sp['站点'] for sp in sp_sorted],
+        x=[sp['净利'] for sp in sp_sorted],
+        orientation='h',
+        marker_color=['#34d399' if sp['净利'] >= 0 else '#f87171' for sp in sp_sorted],
+        text=[f'¥{sp["净利"]:+,.0f}' for sp in sp_sorted],
+        textposition='outside',
+        textfont=dict(color='#e2e8f0', size=11),
+        hovertemplate='%{y}<br>净利: ¥%{x:+,.0f}<br>单量: %{customdata}单<extra></extra>',
+        customdata=[sp['订单量'] for sp in sp_sorted],
+    ))
+    fig_rank.update_layout(
+        title='各站点日净利排名',
+        height=max(280, len(sp_sorted) * 34),
+        xaxis_title=None, yaxis_title=None,
+        xaxis=dict(zeroline=True, zerolinecolor='rgba(148,163,184,0.15)'),
+        margin=dict(t=45, b=30, l=100, r=50),
+    )
+    html_rank = dark_fig(fig_rank).to_html(full_html=False, include_plotlyjs=False, config=PLOTLY_CONFIG, div_id='chart_rank')
+
+    # ── 收支结构图 ──
+    # 收入构成: 结算 vs 骑手费
+    fig_rev = go.Figure()
+    rev_settlement = sum(sp['结算收入'] for sp in station_profits)
+    rev_rider = sum(sp['骑手费收入'] for sp in station_profits)
+    fig_rev.add_trace(go.Pie(
+        labels=['结算收入', '骑手费收入'],
+        values=[rev_settlement, rev_rider],
+        marker_colors=['#818cf8', '#a78bfa'],
+        hole=0.5, textinfo='label+value',
+        textfont=dict(color='#e2e8f0', size=11),
+    ))
+    fig_rev.update_layout(title='收入构成', height=280, showlegend=False,
+                          margin=dict(t=45, b=10, l=10, r=10))
+    html_rev = dark_fig(fig_rev).to_html(full_html=False, include_plotlyjs=False, config=PLOTLY_CONFIG, div_id='chart_rev')
+
+    # 成本构成: 人力 vs 物料
+    fig_cost = go.Figure()
+    fig_cost.add_trace(go.Pie(
+        labels=['人力成本', '物料摊销'],
+        values=[day_labor, day_material],
+        marker_colors=['#f87171', '#fb923c'],
+        hole=0.5, textinfo='label+value',
+        textfont=dict(color='#e2e8f0', size=11),
+    ))
+    fig_cost.update_layout(title='成本构成', height=280, showlegend=False,
+                           margin=dict(t=45, b=10, l=10, r=10))
+    html_cost = dark_fig(fig_cost).to_html(full_html=False, include_plotlyjs=False, config=PLOTLY_CONFIG, div_id='chart_cost')
+
+    # ── 站点明细表 ──
+    rows = ''
+    for sp in sorted(station_profits, key=lambda x: x['净利'], reverse=True):
+        pc = '#34d399' if sp['净利'] >= 0 else '#f87171'
+        subsidy_str = f'+{sp["补贴"]:.0f}' if sp['补贴'] > 0 else '0'
+        rows += f"""
+                <tr>
+                  <td>{sp['站点']}</td>
+                  <td>{sp['订单量']}</td>
+                  <td>{sp['编制']}人</td>
+                  <td>{sp['人均单量']}单/人</td>
+                  <td>¥{sp['结算收入']:,.0f}</td>
+                  <td>¥{sp['骑手费收入']:,.0f}</td>
+                  <td>-¥{sp['人力成本']:,.0f}</td>
+                  <td>-¥{sp['物料']:.0f}</td>
+                  <td>{subsidy_str}</td>
+                  <td style="color:{pc};font-weight:600">¥{sp['净利']:+,.0f}</td>
+                </tr>"""
+
+    # ── 完整 HTML ──
+    now_str = datetime.now().strftime('%H:%M')
+    html = f"""<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>接力送 · UE 盈利分析 | {date_display}</title>
+<script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root {{
+  --bg: #06080d;
+  --surface: rgba(15, 20, 30, 0.75);
+  --border: rgba(148, 163, 184, 0.08);
+  --border-glow: rgba(129, 140, 248, 0.25);
+  --text: #e2e8f0;
+  --text-dim: #94a3b8;
+  --text-muted: #64748b;
+  --accent: #818cf8;
+  --success: #34d399;
+  --danger: #f87171;
+  --warning: #fbbf24;
+  --pink: #f472b6;
+  --radius: 12px;
+  --radius-sm: 8px;
+  --transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}}
+
+* {{ margin:0; padding:0; box-sizing:border-box; }}
+html {{ scroll-behavior:smooth; }}
+body {{
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}}
+
+body::before {{
+  content: ''; position: fixed; inset:0; z-index:-1; pointer-events:none;
+  background:
+    radial-gradient(ellipse 80% 60% at 20% 10%, rgba(129,140,248,0.06) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 80% 80%, rgba(52,211,153,0.04) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 40% at 50% 50%, rgba(248,113,113,0.03) 0%, transparent 60%);
+}}
+
+.header {{
+  position: relative;
+  background: linear-gradient(135deg, rgba(15,20,30,0.95), rgba(30,41,59,0.9));
+  border-bottom: 1px solid var(--border);
+  padding: 22px 32px 14px;
+  backdrop-filter: blur(20px);
+  overflow: hidden;
+}}
+.header::after {{
+  content: ''; position: absolute; bottom:0; left:0; right:0; height:2px;
+  background: linear-gradient(90deg, var(--accent), var(--success), var(--pink), var(--warning));
+  opacity: 0.6;
+}}
+.header h1 {{
+  font-size: 24px; font-weight: 800; letter-spacing: -0.5px;
+  background: linear-gradient(135deg, #e2e8f0 0%, #818cf8 100%);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+}}
+.header .meta {{ font-size: 12px; color: var(--text-dim); margin-top: 4px; }}
+.header .back {{
+  display: inline-block; margin-top: 8px; color: var(--accent);
+  font-size: 12px; text-decoration: none; transition: color 0.2s;
+}}
+.header .back:hover {{ color: #a5b4fc; }}
+
+.container {{ max-width:1100px; margin:0 auto; padding:20px 28px 40px; }}
+
+.kpi-grid {{
+  display:grid;
+  grid-template-columns:repeat(auto-fit, minmax(155px,1fr));
+  gap:12px; margin-bottom:20px;
+}}
+.kpi-card {{
+  position:relative; overflow:hidden;
+  background:var(--surface);
+  backdrop-filter: blur(16px);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  padding:16px 18px;
+  transition: all var(--transition);
+}}
+.kpi-card:hover {{
+  transform:translateY(-2px);
+  border-color:var(--border-glow);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.3), 0 0 0 1px var(--border-glow);
+}}
+.kpi-title {{
+  font-size:10.5px; color:var(--text-muted); font-weight:600;
+  text-transform:uppercase; letter-spacing:0.8px;
+}}
+.kpi-value {{
+  font-size:26px; font-weight:800; margin:3px 0;
+  font-variant-numeric:tabular-nums; letter-spacing:-1px;
+}}
+.kpi-sub {{ font-size:11px; color:var(--text-dim); }}
+
+.section {{
+  background:var(--surface);
+  backdrop-filter:blur(20px);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  padding:20px 22px; margin-bottom:16px;
+}}
+.section h2 {{
+  font-size:15px; font-weight:700; color:var(--text);
+  padding-bottom:10px; margin-bottom:14px;
+  border-bottom:1px solid var(--border);
+  display:flex; align-items:center; gap:8px;
+}}
+.section h2::before {{
+  content: ''; width:4px; height:18px; border-radius:2px;
+  background:var(--accent);
+}}
+
+.chart-grid {{ display:grid; grid-template-columns:1fr 1fr; gap:16px; }}
+
+table {{ width:100%; border-collapse:collapse; font-size:12px; }}
+th {{
+  background:rgba(30,41,59,0.6); color:var(--text-dim); font-weight:600;
+  padding:9px 10px; text-align:left; font-size:10.5px;
+  text-transform:uppercase; letter-spacing:0.5px;
+}}
+td {{
+  padding:7px 10px; border-bottom:1px solid rgba(148,163,184,0.06);
+  color:var(--text-dim);
+}}
+tr:last-child td {{ border-bottom:none; }}
+tr:hover td {{ background:rgba(129,140,248,0.04); }}
+
+.note-box {{
+  background:rgba(129,140,248,0.06);
+  border:1px solid rgba(129,140,248,0.15);
+  border-left:3px solid var(--accent);
+  padding:11px 16px; border-radius:var(--radius-sm);
+  margin:14px 0; font-size:12px; color:var(--text-dim);
+}}
+.note-box strong {{ color:var(--accent); }}
+
+::-webkit-scrollbar {{ width:6px; height:6px; }}
+::-webkit-scrollbar-track {{ background:transparent; }}
+::-webkit-scrollbar-thumb {{ background:rgba(148,163,184,0.15); border-radius:3px; }}
+
+@media (max-width:768px) {{
+  .header {{ padding:16px 18px 10px; }}
+  .header h1 {{ font-size:20px; }}
+  .container {{ padding:12px 10px 30px; }}
+  .chart-grid {{ grid-template-columns:1fr; }}
+  .kpi-grid {{ grid-template-columns:repeat(auto-fit, minmax(130px,1fr)); }}
+}}
+</style>
+</head>
+<body>
+
+<div class="header">
+    <a href="index.html" class="back">&larr; 返回总览</a>
+    <h1>UE 盈利分析</h1>
+    <div class="meta">{date_display} &nbsp;·&nbsp; {total_orders}单 &nbsp;·&nbsp; {ours_count}站 &nbsp;·&nbsp; {t_min.strftime('%H:%M')}-{t_max.strftime('%H:%M')} &nbsp;·&nbsp; {now_str} 更新</div>
+</div>
+
+<div class="container">
+
+    <div class="note-box">
+        <strong>UE 参数</strong> &nbsp;结算 {SETTLEMENT_PRICE}元/单 &nbsp;|&nbsp; 骑手费 {RIDER_FEE}元/单 &nbsp;|&nbsp; 人力 {LABOR_RATE}元/h×{HOURS_PER_PERSON}h &nbsp;|&nbsp; 物料 {MATERIAL_PER_STATION:.1f}元/天/站 &nbsp;|&nbsp; 补贴 (T-1)×{SUBSIDY_PER_EXTRA}元 &nbsp;|&nbsp; 门槛≥{PER_PERSON_THRESHOLD}单/人
+    </div>
+
+    <div class="kpi-grid">
+        <div class="kpi-card">
+            <div class="kpi-title">总收入</div>
+            <div class="kpi-value" style="color:#818cf8">¥{day_revenue:,.0f}</div>
+            <div class="kpi-sub">结算 + 骑手费</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-title">总人力成本</div>
+            <div class="kpi-value" style="color:#f87171">-¥{day_labor:,.0f}</div>
+            <div class="kpi-sub">{ours_count}站 × 人均{LABOR_RATE}元/h×{HOURS_PER_PERSON}h</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-title">总物料</div>
+            <div class="kpi-value" style="color:#fb923c">-¥{day_material:,.0f}</div>
+            <div class="kpi-sub">{MATERIAL_PER_STATION:.1f}元 × {ours_count}站</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-title">总补贴</div>
+            <div class="kpi-value" style="color:#fbbf24">+¥{day_subsidy:,.0f}</div>
+            <div class="kpi-sub">(T-1)×{SUBSIDY_PER_EXTRA}元</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-title">日净利</div>
+            <div class="kpi-value" style="color:{profit_color}">¥{day_profit:+,.0f}</div>
+            <div class="kpi-sub">利润率 {profit_rate:+.1f}%</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-title">单均净利</div>
+            <div class="kpi-value" style="color:{profit_color}">¥{(day_profit/total_orders):+.2f}</div>
+            <div class="kpi-sub">每单利润</div>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>站点日净利排名</h2>
+        {html_rank}
+    </div>
+
+    <div class="section">
+        <h2>收支结构</h2>
+        <div class="chart-grid">
+            <div>{html_rev}</div>
+            <div>{html_cost}</div>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>站点收支明细</h2>
+        <div style="max-height:500px;overflow:auto;">
+        <table>
+            <thead><tr>
+                <th>站点</th><th>单量</th><th>编制</th><th>人均</th>
+                <th>结算</th><th>骑手费</th><th>人力</th><th>物料</th><th>补贴</th><th>净利</th>
+            </tr></thead>
+            <tbody>{rows}</tbody>
+        </table>
+        </div>
+    </div>
+
+</div>
+
+</body>
+</html>"""
+
+    for path in [ue_path, ue_dir_path]:
+        with open(path, 'w', encoding='utf-8') as f:
+            f.write(html)
+    print(f'  [OK] {os.path.basename(ue_path)} (UE analysis)')
 
 
 def update_index(dates_summary):
@@ -885,48 +1223,17 @@ def update_index(dates_summary):
         mdd = datetime.strptime(d['date'], '%Y-%m-%d').strftime('%m%d')
         profit_color = '#34d399' if d.get('day_profit', 0) >= 0 else '#f87171'
 
-        # 盈利摘要行
+        # 盈利摘要行 → 链接到单日 UE 分析页
         profit_row = ''
         if d.get('day_profit') is not None:
             profit_row = f"""
-        <div class="profit-summary" onclick="toggleProfit('{mdd}')">
+        <a href="{mdd}_ue.html" class="profit-summary">
           <span>结算 ¥{d.get('day_revenue',0):,.0f}</span>
           <span>人力 -¥{d.get('day_labor',0):,.0f}</span>
           <span>补贴 +¥{d.get('day_subsidy',0):,.0f}</span>
           <span class="profit-net" style="color:{profit_color}">日净利 {d['day_profit']:+,.0f}元</span>
-          <span class="profit-caret" id="caret_{mdd}">&#9662;</span>
-        </div>"""
-
-        # 站点明细表
-        profit_table = ''
-        station_profits = d.get('station_profits', [])
-        if station_profits:
-            rows = ''
-            for sp in sorted(station_profits, key=lambda x: x['净利'], reverse=True):
-                pc = '#34d399' if sp['净利'] >= 0 else '#f87171'
-                subsidy_str = f'+{sp["补贴"]:.0f}' if sp['补贴'] > 0 else '0'
-                rows += f"""
-                <tr>
-                  <td>{sp['站点']}</td>
-                  <td>{sp['订单量']}</td>
-                  <td>{sp['编制']}人</td>
-                  <td>{sp['人均单量']}单/人</td>
-                  <td>¥{sp['结算收入']:,.0f}</td>
-                  <td>¥{sp['骑手费收入']:,.0f}</td>
-                  <td>-¥{sp['人力成本']:,.0f}</td>
-                  <td>{subsidy_str}</td>
-                  <td style="color:{pc};font-weight:600">¥{sp['净利']:+,.0f}</td>
-                </tr>"""
-            profit_table = f"""
-        <div class="profit-table" id="profit_{mdd}" style="display:none">
-          <table>
-            <thead><tr>
-              <th>站点</th><th>单量</th><th>编制</th><th>人均</th>
-              <th>结算</th><th>骑手费</th><th>人力</th><th>补贴</th><th>净利</th>
-            </tr></thead>
-            <tbody>{rows}</tbody>
-          </table>
-        </div>"""
+          <span class="profit-arrow">&rarr;</span>
+        </a>"""
 
         cards_html += f"""
       <div class="day-card">
@@ -942,7 +1249,6 @@ def update_index(dates_summary):
           </div>
         </a>
         {profit_row}
-        {profit_table}
       </div>"""
 
     now_str = datetime.now().strftime('%m-%d %H:%M')
@@ -1083,36 +1389,20 @@ body::before {{
 }}
 .day-card-link:hover .arrow {{ color: var(--accent); transform: translateX(4px); }}
 
-/* 盈利子表 */
+/* 盈利摘要 — 链接到 UE 分析页 */
 .profit-summary {{
   display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
   padding: 10px 26px;
   border-top: 1px solid var(--border);
   background: rgba(129,140,248,0.03);
   font-size: 12px; color: var(--text-dim);
-  cursor: pointer; user-select: none;
+  text-decoration: none;
   transition: background var(--transition);
 }}
-.profit-summary:hover {{ background: rgba(129,140,248,0.08); }}
+.profit-summary:hover {{ background: rgba(129,140,248,0.1); }}
 .profit-net {{ font-weight: 700; font-size: 13px; margin-left: auto; }}
-.profit-caret {{ font-size: 10px; color: var(--text-muted); transition: transform 0.2s; }}
-.profit-table {{
-  border-top: 1px solid var(--border);
-  padding: 8px 22px 14px;
-  background: rgba(10,14,22,0.5);
-}}
-.profit-table table {{ width: 100%; border-collapse: collapse; font-size: 11px; }}
-.profit-table th {{
-  background: transparent; color: var(--text-muted); font-weight: 600;
-  padding: 7px 8px; text-align: left; font-size: 10px;
-  text-transform: uppercase; letter-spacing: 0.3px;
-  border-bottom: 1px solid var(--border);
-}}
-.profit-table td {{
-  padding: 5px 8px; color: var(--text-dim);
-  border-bottom: 1px solid rgba(148,163,184,0.04);
-}}
-.profit-table tr:last-child td {{ border-bottom: none; }}
+.profit-arrow {{ font-size: 14px; color: var(--text-muted); transition: transform 0.2s; }}
+.profit-summary:hover .profit-arrow {{ color: var(--accent); transform: translateX(2px); }}
 
 .summary-bar {{
   display: grid;
@@ -1187,20 +1477,6 @@ body::before {{
   </div>
 
 </div>
-
-<script>
-function toggleProfit(id) {{
-  var tbl = document.getElementById('profit_' + id);
-  var caret = document.getElementById('caret_' + id);
-  if (tbl.style.display === 'none' || tbl.style.display === '') {{
-    tbl.style.display = 'block';
-    if (caret) caret.style.transform = 'rotate(180deg)';
-  }} else {{
-    tbl.style.display = 'none';
-    if (caret) caret.style.transform = 'rotate(0deg)';
-  }}
-}}
-</script>
 
 </body>
 </html>"""
