@@ -102,7 +102,9 @@ def make_hourly_chart(sdf, title='分时订单量', color='#818cf8'):
         marker_color=color, text=hourly.values, textposition='outside',
         hovertemplate='%{x}<br>%{y}单<extra></extra>'
     ))
-    fig.update_layout(title=title, height=260, xaxis_tickangle=-45, yaxis_title=None)
+    ymax = hourly.values.max()
+    fig.update_layout(title=title, height=260, xaxis_tickangle=-45, yaxis_title=None,
+                      yaxis_range=[0, ymax * 1.2])
     return dark_fig(fig).to_html(full_html=False, include_plotlyjs=False, config=PLOTLY_CONFIG)
 
 
@@ -327,10 +329,11 @@ def process_date(date_str):
             fig_gap.add_annotation(x=row['站点'], y=row['人均单量'] / 2,
                                    text=f'差{gp:.0f}单', showarrow=False,
                                    font=dict(color='#fca5a5', size=11))
+    ymax = known['人均单量'].max()
     fig_gap.update_layout(
         title='各点位距「人均20单」补贴门槛',
         height=420, yaxis_title=None,
-        yaxis_range=[0, max(known['人均单量'].max() + 5, 25)],
+        yaxis_range=[0, max(ymax * 1.2, 25)],
         xaxis_tickangle=-30,
     )
     html_gap = dark_fig(fig_gap).to_html(full_html=False, include_plotlyjs=False, config=PLOTLY_CONFIG, div_id='chart_gap')
@@ -348,9 +351,11 @@ def process_date(date_str):
         text=st_comps['订单量'], textposition='outside',
         textfont=dict(color='#fca5a5'),
     ))
+    bar_max = max(st_ours['订单量'].max(), st_comps['订单量'].max())
     fig_bar.update_layout(
         title='各站点订单量',
         height=380, xaxis_tickangle=-30, yaxis_title=None,
+        yaxis_range=[0, bar_max * 1.2],
         legend=dict(orientation='h', yanchor='bottom', y=1.02),
     )
     html_bar = dark_fig(fig_bar).to_html(full_html=False, include_plotlyjs=False, config=PLOTLY_CONFIG, div_id='chart_bar')
