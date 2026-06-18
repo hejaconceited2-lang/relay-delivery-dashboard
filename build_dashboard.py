@@ -1244,7 +1244,7 @@ def update_index(dates_summary):
 
     # ── 走势图 ──
     trend_data = sorted(dates_summary, key=lambda x: x['date'])
-    trend_dates = [d['date'][5:] for d in trend_data]  # MM-DD
+    trend_dates = [f"{int(d['date'][5:7])}/{int(d['date'][8:10])}" for d in trend_data]  # M/D
     trend_orders = [d['total'] for d in trend_data]
     trend_profits = [d.get('day_profit', 0) for d in trend_data]
     trend_revenues = [d.get('day_revenue', 0) for d in trend_data]
@@ -1301,11 +1301,9 @@ def update_index(dates_summary):
     html_trend2 = dark_fig(fig_trend2).to_html(full_html=False, include_plotlyjs=False, config=PLOTLY_CONFIG, div_id='trend2')
 
     trends_html = f"""
-      <div class="trend-section">
-        <div class="trend-grid">
-          <div class="trend-box">{html_trend1}</div>
-          <div class="trend-box">{html_trend2}</div>
-        </div>
+      <div class="trend-sidebar">
+        <div class="trend-box">{html_trend1}</div>
+        <div class="trend-box">{html_trend2}</div>
       </div>"""
 
     # 生成日期卡片
@@ -1421,17 +1419,21 @@ body::before {{
   font-size: 13px; color: var(--text-dim); margin-top: 6px;
 }}
 
-.container {{ max-width: 900px; margin: 0 auto; padding: 28px 24px 60px; }}
+.container {{ max-width: 1100px; margin: 0 auto; padding: 28px 24px 60px; }}
 
-.trend-section {{
+.main-layout {{ display: flex; gap: 20px; align-items: flex-start; }}
+.main-cards {{ flex: 1; min-width: 0; }}
+.trend-sidebar {{
+  width: 440px; flex-shrink: 0; display: flex; flex-direction: column; gap: 16px;
+  position: sticky; top: 20px;
+}}
+.trend-box {{
   background: var(--surface);
   backdrop-filter: blur(20px);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 18px 20px; margin-bottom: 18px;
+  padding: 14px 16px;
 }}
-.trend-grid {{ display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }}
-.trend-box {{ min-height: 300px; }}
 
 .day-card {{
   position: relative;
@@ -1548,7 +1550,8 @@ body::before {{
   .header h1 {{ font-size: 22px; }}
   .container {{ padding: 16px 12px 40px; }}
   .summary-bar {{ grid-template-columns: repeat(2, 1fr); }}
-  .trend-grid {{ grid-template-columns: 1fr; }}
+  .main-layout {{ flex-direction: column; }}
+  .trend-sidebar {{ width: 100%; position: static; }}
   .day-card .row {{ flex-wrap: wrap; }}
 }}
 </style>
@@ -1580,8 +1583,12 @@ body::before {{
       <div class="value" style="color:#fbbf24;font-size:14px;">{latest_date[5:]}</div>
     </div>
   </div>
-{trends_html}
+  <div class="main-layout">
+    <div class="main-cards">
 {cards_html}
+    </div>
+{trends_html}
+  </div>
   <div class="footer">
     接力送 &middot; 楼宇末端配送运营数据 &nbsp;|&nbsp; 数据来源: 美团校园订单详情导出
   </div>
