@@ -1242,6 +1242,72 @@ def update_index(dates_summary):
     num_dates = len(dates_summary)
     latest_date = dates_summary[0]['date'] if dates_summary else 'N/A'
 
+    # ── 走势图 ──
+    trend_data = sorted(dates_summary, key=lambda x: x['date'])
+    trend_dates = [d['date'][5:] for d in trend_data]  # MM-DD
+    trend_orders = [d['total'] for d in trend_data]
+    trend_profits = [d.get('day_profit', 0) for d in trend_data]
+    trend_revenues = [d.get('day_revenue', 0) for d in trend_data]
+    trend_labors = [d.get('day_labor', 0) for d in trend_data]
+    trend_cancs = [d.get('day_canc_comp', 0) for d in trend_data]
+    trend_materials = [len(trend_data) * 0]  # placeholder, compute per-date
+
+    # 图1: 日单量 + 日净利
+    fig_trend1 = go.Figure()
+    fig_trend1.add_trace(go.Bar(
+        x=trend_dates, y=trend_orders, name='订单量',
+        marker_color='#818cf8', text=trend_orders, textposition='outside',
+        textfont=dict(color='#c7d2fe', size=10),
+    ))
+    fig_trend1.add_trace(go.Scatter(
+        x=trend_dates, y=trend_profits, name='日净利',
+        mode='lines+markers', yaxis='y2',
+        line=dict(color='#34d399' if trend_profits[-1] >= 0 else '#f87171', width=2),
+        marker=dict(size=6), text=[f'¥{p:+,.0f}' for p in trend_profits],
+        textposition='top center', textfont=dict(color='#e2e8f0', size=10),
+    ))
+    fig_trend1.update_layout(
+        title='日单量 & 净利走势',
+        height=320, xaxis_tickangle=-30,
+        yaxis=dict(title=None, gridcolor='rgba(148,163,184,0.06)'),
+        yaxis2=dict(title=None, overlaying='y', side='right', showgrid=False),
+        legend=dict(orientation='h', y=1.12, x=0),
+        margin=dict(t=50, b=50, l=45, r=50),
+    )
+    html_trend1 = dark_fig(fig_trend1).to_html(full_html=False, include_plotlyjs=False, config=PLOTLY_CONFIG, div_id='trend1')
+
+    # 图2: 收入与成本堆叠
+    fig_trend2 = go.Figure()
+    fig_trend2.add_trace(go.Bar(
+        x=trend_dates, y=trend_revenues, name='总收入',
+        marker_color='#818cf8',
+    ))
+    fig_trend2.add_trace(go.Bar(
+        x=trend_dates, y=[-(l + d.get('day_canc_comp', 0) + d.get('stations', 0) * MATERIAL_PER_STATION) for l, d in zip(trend_labors, trend_data)],
+        name='成本(人力+物料+赔偿)',
+        marker_color='#f87171',
+    ))
+    fig_trend2.add_trace(go.Bar(
+        x=trend_dates, y=[d.get('day_subsidy', 0) for d in trend_data],
+        name='补贴', marker_color='#fbbf24',
+    ))
+    fig_trend2.update_layout(
+        title='收支结构',
+        height=320, xaxis_tickangle=-30, barmode='relative',
+        yaxis=dict(title=None, gridcolor='rgba(148,163,184,0.06)'),
+        legend=dict(orientation='h', y=1.12, x=0),
+        margin=dict(t=50, b=50, l=45, r=25),
+    )
+    html_trend2 = dark_fig(fig_trend2).to_html(full_html=False, include_plotlyjs=False, config=PLOTLY_CONFIG, div_id='trend2')
+
+    trends_html = f"""
+      <div class="trend-section">
+        <div class="trend-grid">
+          <div class="trend-box">{html_trend1}</div>
+          <div class="trend-box">{html_trend2}</div>
+        </div>
+      </div>"""
+
     # 生成日期卡片
     cards_html = ''
     for d in dates_summary:
@@ -1354,7 +1420,17 @@ body::before {{
   font-size: 13px; color: var(--text-dim); margin-top: 6px;
 }}
 
-.container {{ max-width: 680px; margin: 0 auto; padding: 28px 24px 60px; }}
+.container {{ max-width: 900px; margin: 0 auto; padding: 28px 24px 60px; }}
+
+.trend-section {{
+  background: var(--surface);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px 20px; margin-bottom: 18px;
+}}
+.trend-grid {{ display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }}
+.trend-box {{ min-height: 300px; }}
 
 .day-card {{
   position: relative;
@@ -1471,6 +1547,7 @@ body::before {{
   .header h1 {{ font-size: 22px; }}
   .container {{ padding: 16px 12px 40px; }}
   .summary-bar {{ grid-template-columns: repeat(2, 1fr); }}
+  .trend-grid {{ grid-template-columns: 1fr; }}
   .day-card .row {{ flex-wrap: wrap; }}
 }}
 </style>
@@ -1502,6 +1579,7 @@ body::before {{
       <div class="value" style="color:#fbbf24;font-size:14px;">{latest_date[5:]}</div>
     </div>
   </div>
+{trends_html}
 {cards_html}
   <div class="footer">
     接力送 &middot; 楼宇末端配送运营数据 &nbsp;|&nbsp; 数据来源: 美团校园订单详情导出
