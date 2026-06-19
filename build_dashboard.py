@@ -592,6 +592,11 @@ body::before {{
   font-size: 12px; color: var(--text-dim); margin-top: 4px;
   font-variant-numeric: tabular-nums;
 }}
+.back-link-header {{
+  display: inline-block; margin-bottom: 6px; color: var(--accent);
+  font-size: 12px; text-decoration: none; transition: color 0.2s;
+}}
+.back-link-header:hover {{ color: #a5b4fc; }}
 
 .tab-bar {{
   display:flex; flex-wrap:wrap; gap:3px;
@@ -766,6 +771,7 @@ tr td a:hover {{ color:#a5b4fc; text-decoration:underline; }}
 <body>
 
 <div class="header">
+    <a href="index.html" class="back-link-header">&larr; 返回主页</a>
     <h1>接力送 · 运营看板</h1>
     <div class="meta">{date_display} &nbsp;·&nbsp; {total}单 &nbsp;·&nbsp; {len(st)}站（我方{len(st_ours)} + 竞争方{len(st_comps)}）&nbsp;·&nbsp; {t_min.strftime('%H:%M')}-{t_max.strftime('%H:%M')} &nbsp;·&nbsp; {now_str} 更新 &nbsp;·&nbsp; <span style="color:{coverage_color}">{coverage_label}</span></div>
 </div>
