@@ -168,40 +168,50 @@ def build_station_tab(r, station_charts):
         badge = '<span class="badge badge-gray">编制未知</span>'
         status_note = '编制数据缺失'
 
-    subsidy_html = ''
     if is_ours and staff:
         meets_per = r['人均单量'] >= 20 if r['人均单量'] else False
         subsidy_per_day = (staff - 1) * 80 if meets_per else 0
         subsidy_color = '#34d399' if subsidy_per_day > 0 else '#f87171'
-        subsidy_html = f"""
-        <div class="kpi-card">
-            <div class="kpi-title">今日补贴</div>
-            <div class="kpi-value" style="color:{subsidy_color}">{subsidy_per_day}元</div>
-            <div class="kpi-sub">({staff}-1)x80</div>
-        </div>"""
+    else:
+        subsidy_per_day = 0
+        subsidy_color = '#64748b'
 
     pickup_html = ''
     if r['已取货'] > 0:
         pickup_html = kpi_card('配送中(已取货)', r['已取货'], '截至数据拉取时间', '#fbbf24')
 
     tab_id = short.replace(' ', '_')
+    orders = r['订单量']
+    staff_editable = 'kpi-editable' if is_ours and staff else ''
     return f"""
-    <div class="tab-panel" id="tab_{tab_id}">
+    <div class="tab-panel" id="tab_{tab_id}" data-station="{short}" data-orders="{orders}" data-staff="{staff or 0}" data-ours="{1 if is_ours else 0}">
         <a href="javascript:switchTab('overview')" class="back-link">&larr; 返回总览</a>
         <div class="kpi-grid">
-            {kpi_card('订单量', r['订单量'], f"完成率 {r['完成率']}%", '#818cf8')}
+            {kpi_card('订单量', orders, f"完成率 {r['完成率']}%", '#818cf8')}
             {kpi_card('已完成', r['已完成'], f"已取消 {r['已取消']}", '#34d399')}
             {pickup_html}
-            {kpi_card('编制', f"{staff}人" if staff else "?", '', '#a78bfa')}
+            <div class="kpi-card {staff_editable}"{' onclick="editStaff(&quot;' + tab_id + '&quot;, this)"' if is_ours and staff else ''}>
+                <div class="kpi-title">编制 {'✎' if is_ours and staff else ''}</div>
+                <div class="kpi-value staff-val" style="color:#a78bfa">{staff}人</div>
+                <div class="kpi-sub"></div>
+            </div>
             {kpi_card('归属人', r.get('归属人', '') or '—', '', '#e2e8f0')}
-            {kpi_card('人均单量', f"{r['人均单量']}单/人" if r['人均单量'] else 'N/A', status_note, '#34d399' if r['达标'] == 'Y' else '#f87171')}
-            {subsidy_html}
+            <div class="kpi-card">
+                <div class="kpi-title">人均单量</div>
+                <div class="kpi-value" id="per_{tab_id}" style="color:{'#34d399' if r['达标'] == 'Y' else '#f87171'}">{f"{r['人均单量']}单/人" if r['人均单量'] else 'N/A'}</div>
+                <div class="kpi-sub" id="per_sub_{tab_id}">{status_note}</div>
+            </div>
+            <div class="kpi-card" id="subsidy_card_{tab_id}">
+                <div class="kpi-title">今日补贴</div>
+                <div class="kpi-value" id="subsidy_{tab_id}" style="color:{subsidy_color}">{subsidy_per_day}元</div>
+                <div class="kpi-sub" id="subsidy_formula_{tab_id}">{f'({staff}-1)x80' if is_ours and staff else 'N/A'}</div>
+            </div>
             {kpi_card('平均配送', f"{r['平均配送min']}min" if pd.notna(r['平均配送min']) else 'N/A', f"中位 {r['中位配送min']}min", '#fbbf24')}
             {kpi_card('超60min', r['超60min'], f"最长 {r['最长配送min']}min" if pd.notna(r['最长配送min']) else '', '#fb923c')}
         </div>
 
-        <div class="note-box">
-            <strong>{badge} {short}</strong> | {status_note}
+        <div class="note-box" id="note_{tab_id}">
+            <strong><span id="badge_{tab_id}">{badge}</span> {short}</strong> | <span id="status_{tab_id}">{status_note}</span>
             {'| 补贴条件：人均>=20单 且 >=1人满3h' if is_ours and staff else ''}
         </div>
 
@@ -465,6 +475,7 @@ def process_date(date_str):
         <div class="note-box" style="border-left-color:#fbbf24;background:rgba(251,191,36,0.08);margin-bottom:14px;">
             <strong>{pickup_note}</strong> — 时间窗口 {t_min.strftime('%H:%M')}-{t_max.strftime('%H:%M')}（截至拉取时），
             完成率等指标为当前快照值。
+            <button class="export-btn" id="exportStaffBtn" onclick="exportStaffConfig()" style="display:none;float:right;">导出编制配置</button>
         </div>
 
         <div class="kpi-grid">
@@ -750,6 +761,16 @@ tr td a:hover {{ color:#a5b4fc; text-decoration:underline; }}
   background:rgba(129,140,248,0.16); border-color:var(--border-glow);
   color:#a5b4fc;
 }}
+.kpi-editable {{ cursor:pointer; }}
+.kpi-editable:hover {{ border-color:var(--warning) !important; }}
+.kpi-editable .kpi-title {{ color:var(--warning); }}
+.export-btn {{
+  display:inline-block; margin-left:12px; padding:4px 12px;
+  background:rgba(251,191,36,0.1); border:1px solid rgba(251,191,36,0.25);
+  border-radius:6px; color:var(--warning); font-size:11px; cursor:pointer;
+  transition:all var(--transition);
+}}
+.export-btn:hover {{ background:rgba(251,191,36,0.2); color:#fcd34d; }}
 
 ::-webkit-scrollbar {{ width:6px; height:6px; }}
 ::-webkit-scrollbar-track {{ background:transparent; }}
@@ -803,6 +824,108 @@ function switchTab(tabId) {{
         if (oc.indexOf("'" + tabId + "'") !== -1) b.classList.add('active');
     }});
     window.scrollTo({{top:0, behavior:'smooth'}});
+}}
+
+var staffChanges = {{}};  // {{tabId: newStaff}}
+
+function editStaff(tabId, card) {{
+    var valEl = card.querySelector('.staff-val');
+    var current = parseInt(valEl.textContent);
+    var input = prompt('修改编制 (当前 '+current+'人):', current);
+    if (input === null || input === '') return;
+    var newStaff = parseInt(input);
+    if (isNaN(newStaff) || newStaff < 1) return;
+    valEl.textContent = newStaff + '人';
+    staffChanges[tabId] = newStaff;
+    recalcUE(tabId, newStaff);
+    updateExportBtn();
+}}
+
+function recalcUE(tabId, staff) {{
+    var panel = document.getElementById('tab_' + tabId);
+    var orders = parseInt(panel.dataset.orders);
+    var perPerson = (orders / staff).toFixed(1);
+    var meets = perPerson >= 20;
+    var subsidy = meets ? (staff - 1) * 80 : 0;
+
+    // 人均单量
+    var perEl = document.getElementById('per_' + tabId);
+    var perSub = document.getElementById('per_sub_' + tabId);
+    if (perEl) {{
+        perEl.textContent = perPerson + '单/人';
+        perEl.style.color = meets ? '#34d399' : '#f87171';
+    }}
+    if (perSub) {{
+        if (meets) perSub.textContent = '人均' + perPerson + '单 (+' + (perPerson - 20).toFixed(1) + ')';
+        else perSub.textContent = '人均' + perPerson + '单 (差' + (20 - perPerson).toFixed(1) + '单)';
+    }}
+
+    // 补贴
+    var subEl = document.getElementById('subsidy_' + tabId);
+    var subForm = document.getElementById('subsidy_formula_' + tabId);
+    if (subEl) {{
+        subEl.textContent = subsidy + '元';
+        subEl.style.color = subsidy > 0 ? '#34d399' : '#f87171';
+    }}
+    if (subForm) subForm.textContent = '(' + staff + '-1)x80';
+
+    // 达标badge
+    var badgeEl = document.getElementById('badge_' + tabId);
+    if (badgeEl) {{
+        if (meets) {{
+            badgeEl.className = 'badge badge-green';
+            badgeEl.textContent = '达标';
+        }} else {{
+            badgeEl.className = 'badge badge-red';
+            badgeEl.textContent = '未达标';
+        }}
+    }}
+
+    // 状态文字
+    var statusEl = document.getElementById('status_' + tabId);
+    if (statusEl) {{
+        if (meets) statusEl.textContent = '人均' + perPerson + '单 (+' + (perPerson - 20).toFixed(1) + ')';
+        else statusEl.textContent = '人均' + perPerson + '单 (差' + (20 - perPerson).toFixed(1) + '单)';
+    }}
+
+    // 存储
+    localStorage.setItem('staff_overrides_' + window.location.pathname, JSON.stringify(staffChanges));
+}}
+
+function updateExportBtn() {{
+    var btn = document.getElementById('exportStaffBtn');
+    if (btn) btn.style.display = Object.keys(staffChanges).length ? 'inline-block' : 'none';
+}}
+
+// Load saved overrides on page load
+document.addEventListener('DOMContentLoaded', function() {{
+    var saved = localStorage.getItem('staff_overrides_' + window.location.pathname);
+    if (saved) {{
+        staffChanges = JSON.parse(saved);
+        Object.keys(staffChanges).forEach(function(tabId) {{
+            var card = document.querySelector('#tab_' + tabId + ' .kpi-editable');
+            if (card) {{
+                var newStaff = staffChanges[tabId];
+                card.querySelector('.staff-val').textContent = newStaff + '人';
+                recalcUE(tabId, newStaff);
+            }}
+        }});
+    }}
+    updateExportBtn();
+}});
+
+function exportStaffConfig() {{
+    var lines = [];
+    Object.keys(staffChanges).forEach(function(tabId) {{
+        var panel = document.getElementById('tab_' + tabId);
+        var station = panel.dataset.station;
+        lines.push("        '分段履约广州" + station + "': " + staffChanges[tabId] + ",");
+    }});
+    if (!lines.length) {{ alert('暂无修改'); return; }}
+    var code = "'" + document.title.split('|')[1].trim() + "': {{\\n" + lines.join('\\n') + "\\n    }},";
+    navigator.clipboard.writeText(code).then(function() {{
+        alert('已复制到剪贴板:\\n\\n' + code + '\\n\\n粘贴到 build_dashboard.py 的 STAFF_OVERRIDES 中');
+    }});
 }}
 </script>
 
