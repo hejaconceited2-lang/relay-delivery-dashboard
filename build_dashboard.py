@@ -210,6 +210,15 @@ def build_station_tab(r, station_charts):
             {kpi_card('超60min', r['超60min'], f"最长 {r['最长配送min']}min" if pd.notna(r['最长配送min']) else '', '#fb923c')}
         </div>
 
+""" + (f"""
+        <div class="profit-line" id="profit_line_{tab_id}">
+            <span>结算 ¥{orders * 2.5:,.0f}</span>
+            <span>骑手费 ¥{orders * 1.0:,.0f}</span>
+            <span>人力 -¥{staff * HOURS_PER_PERSON * LABOR_RATE:,.0f}</span>
+            <span>补贴 {'+¥' + str(subsidy_per_day) if subsidy_per_day > 0 else '0'}</span>
+            <span class="profit-net-value" id="profit_net_{tab_id}" style="color:{'#34d399' if subsidy_per_day + orders*3.5 - staff*HOURS_PER_PERSON*LABOR_RATE - MATERIAL_PER_STATION >= 0 else '#f87171'}">净利 ¥{orders*3.5 + subsidy_per_day - staff*HOURS_PER_PERSON*LABOR_RATE - MATERIAL_PER_STATION:+,.0f}</span>
+        </div>
+""" if is_ours and staff else '') + f"""
         <div class="note-box" id="note_{tab_id}">
             <strong><span id="badge_{tab_id}">{badge}</span> {short}</strong> | <span id="status_{tab_id}">{status_note}</span>
             {'| 补贴条件：人均>=20单 且 >=1人满3h' if is_ours and staff else ''}
@@ -764,6 +773,13 @@ tr td a:hover {{ color:#a5b4fc; text-decoration:underline; }}
 .kpi-editable {{ cursor:pointer; }}
 .kpi-editable:hover {{ border-color:var(--warning) !important; }}
 .kpi-editable .kpi-title {{ color:var(--warning); }}
+.profit-line {{
+  display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+  padding:8px 16px; margin-bottom:4px;
+  background:rgba(15,20,30,0.6); border:1px solid var(--border);
+  border-radius:var(--radius-sm); font-size:11.5px; color:var(--text-dim);
+}}
+.profit-net-value {{ font-weight:700; font-size:13px; margin-left:auto; }}
 .export-btn {{
   display:inline-block; margin-left:12px; padding:4px 12px;
   background:rgba(251,191,36,0.1); border:1px solid rgba(251,191,36,0.25);
@@ -886,6 +902,26 @@ function recalcUE(tabId, staff) {{
     if (statusEl) {{
         if (meets) statusEl.textContent = '人均' + perPerson + '单 (+' + (perPerson - 20).toFixed(1) + ')';
         else statusEl.textContent = '人均' + perPerson + '单 (差' + (20 - perPerson).toFixed(1) + '单)';
+    }}
+
+    // 盈利重算
+    var settlement = orders * 2.5;
+    var rider = orders * 1.0;
+    var labor = staff * 3 * 30;
+    var material = 100/30;
+    var lineSubsidy = meets ? (staff - 1) * 80 : 0;
+    var profit = settlement + rider + lineSubsidy - labor - material;
+    var profitLine = document.getElementById('profit_line_' + tabId);
+    if (profitLine) {{
+        var spans = profitLine.querySelectorAll('span');
+        if (spans.length >= 5) {{
+            spans[0].textContent = '结算 ¥' + settlement.toLocaleString('en', {{maximumFractionDigits:0}});
+            spans[1].textContent = '骑手费 ¥' + rider.toLocaleString('en', {{maximumFractionDigits:0}});
+            spans[2].textContent = '人力 -¥' + labor.toLocaleString('en', {{maximumFractionDigits:0}});
+            spans[3].textContent = '补贴 ' + (lineSubsidy > 0 ? '+¥' + lineSubsidy : '0');
+            spans[4].textContent = '净利 ¥' + (profit >= 0 ? '+' : '') + profit.toLocaleString('en', {{maximumFractionDigits:0}});
+            spans[4].style.color = profit >= 0 ? '#34d399' : '#f87171';
+        }}
     }}
 
     // 存储
