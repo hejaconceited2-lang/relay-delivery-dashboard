@@ -62,7 +62,13 @@ STAFF_OVERRIDES = {
     },
 }
 
-# 日期特定工时覆盖（小时/人，默认 HOURS_PER_PERSON=3）
+# 站点级工时覆盖（小时/人/天，默认 HOURS_PER_PERSON=3）
+# 营业时间长的站点人工成本更高
+STATION_HOURS = {
+    '分段履约广州绿地星玥': 10,  # 营业10h
+}
+
+# 日期特定工时覆盖（优先级高于 STATION_HOURS）
 HOURS_OVERRIDES = {
     '2026-06-18': {
         '分段履约广州华林国际C馆': 1.5,  # 双人各1.5h
@@ -1010,7 +1016,8 @@ function exportStaffConfig() {{
             settlement = cnt * SETTLEMENT_PRICE
             rider_income = cnt * RIDER_FEE
             revenue = settlement + rider_income
-            hours_per = HOURS_OVERRIDES.get(date_str, {}).get(r['全名'], HOURS_PER_PERSON)
+            hours_per = HOURS_OVERRIDES.get(date_str, {}).get(r['全名'],
+                          STATION_HOURS.get(r['全名'], HOURS_PER_PERSON))
             labor = stf * hours_per * LABOR_RATE
             material = MATERIAL_PER_STATION
             canc_comp = r['取消赔偿']
