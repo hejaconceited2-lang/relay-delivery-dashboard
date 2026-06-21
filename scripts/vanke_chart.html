@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>万科欧泊 · 日单量 & 净利</title>
+<script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+<style>
+body { margin:0; background:#0b0f18; font-family: 'Microsoft YaHei', sans-serif; }
+#chart { width:100vw; height:100vh; }
+</style>
+</head>
+<body>
+<div id="chart"></div>
+<script>
+const dates = ['06-07','06-08','06-09','06-10','06-11','06-12','06-13','06-14','06-15','06-16','06-17','06-18','06-19','06-20','06-21'];
+const orders = [26,23,21,35,35,46,43,71,40,34,30,47,47,31,49];
+const profits = [-182,-193,-200,-210,-151,-169,-256,-90,-246,-154,-168,-380,-109,-202,-292];
+
+const trace1 = {
+  x: dates, y: orders, type: 'bar', name: '单量',
+  marker: { color: orders.map(o => o >= 50 ? '#818cf8' : '#6366f1'), opacity: 0.85,
+    line: { color: '#a5b4fc', width: 0.5 } },
+  text: orders.map(String), textposition: 'outside',
+  textfont: { color: '#cbd5e1', size: 13 },
+  yaxis: 'y'
+};
+
+const trace2 = {
+  x: dates, y: profits, type: 'scatter', name: '净利',
+  mode: 'lines+markers+text',
+  marker: { size: 12, color: profits.map(p => p < -250 ? '#ef4444' : p < -150 ? '#f87171' : '#fbbf24') },
+  line: { color: '#f87171', width: 3 },
+  text: profits.map(p => '¥' + p), textposition: 'bottom center',
+  textfont: { color: '#fca5a5', size: 11 },
+  yaxis: 'y2',
+  cliponaxis: false
+};
+
+const layout = {
+  title: { text: '万科欧泊  日单量 & 净利', font: { color: '#e2e8f0', size: 22 } },
+  paper_bgcolor: '#0b0f18',
+  plot_bgcolor: '#0b0f18',
+  font: { color: '#94a3b8' },
+  xaxis: { type: 'category', tickfont: { color: '#94a3b8' }, gridcolor: 'rgba(148,163,184,0.08)' },
+  yaxis: { title: '单量', titlefont: { color: '#818cf8' }, tickfont: { color: '#818cf8' },
+    gridcolor: 'rgba(148,163,184,0.08)', range: [0, 90] },
+  yaxis2: { title: '净利 (¥)', titlefont: { color: '#f87171' }, tickfont: { color: '#f87171' },
+    overlaying: 'y', side: 'right', range: [-450, 100], autorange: false,
+    gridcolor: 'rgba(0,0,0,0)' },
+  shapes: [{ type: 'line', x0: -0.5, x1: 14.5, y0: 0, y1: 0, yref: 'y2',
+    line: { color: '#fbbf24', width: 2, dash: 'dash' } }],
+  legend: { x: 0.01, y: 0.99, font: { color: '#94a3b8' } },
+  margin: { t: 60, b: 40, l: 60, r: 60 },
+  hovermode: 'x unified'
+};
+
+Plotly.newPlot('chart', [trace1, trace2], layout, { responsive: true, displaylogo: false });
+</script>
+</body>
+</html>
