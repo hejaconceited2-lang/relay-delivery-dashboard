@@ -68,6 +68,11 @@ STATION_HOURS = {
     '分段履约广州绿地星玥': 10,  # 营业10h
 }
 
+# 站点级时薪覆盖（元/h，默认 LABOR_RATE=30）
+STATION_LABOR_RATE = {
+    '分段履约广州绿地星玥': 23,  # 人工23元/h
+}
+
 # 日期特定工时覆盖（优先级高于 STATION_HOURS）
 HOURS_OVERRIDES = {
     '2026-06-18': {
@@ -1018,7 +1023,7 @@ function exportStaffConfig() {{
             revenue = settlement + rider_income
             hours_per = HOURS_OVERRIDES.get(date_str, {}).get(r['全名'],
                           STATION_HOURS.get(r['全名'], HOURS_PER_PERSON))
-            labor = stf * hours_per * LABOR_RATE
+            labor = stf * hours_per * STATION_LABOR_RATE.get(r['全名'], LABOR_RATE)
             material = MATERIAL_PER_STATION
             canc_comp = r['取消赔偿']
             meets = per_p and per_p >= PER_PERSON_THRESHOLD
