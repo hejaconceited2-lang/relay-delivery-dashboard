@@ -15,13 +15,13 @@ import sys, os, glob, json
 # 站点编制配置（基准配置，持续更新）
 # ════════════════════════════════════════════════════════
 KNOWN_STAFF = {
-    '分段履约广州绿地星玥': 5, '分段履约广州万菱广场': 2,
+    '分段履约广州绿地星玥': 4, '分段履约广州万菱广场': 2,
     '分段履约广州和业广场': 3, '分段履约广州金鹰大厦': 2,
     '分段履约广州华林国际C馆': 2, '分段履约广州中大附属第六医院': 6,
     '分段履约广州珠江国际轻纺城': 3, '分段履约广州万科欧泊': 3,
-    '分段履约广州孙逸仙北院': 2, '分段履约广州新亚洲电子城': 3,
+    '分段履约广州孙逸仙北院': 2, '分段履约广州新亚洲电子城': 2,
     '分段履约广州新中国大厦': 3,
-    '分段履约广州中大附三岭南医院': 2,
+    '分段履约广州中大附三岭南医院': 3,
     '分段履约广州汇德国际': 2,
     '分段履约广州云升科技园': 2,
 }
@@ -59,9 +59,6 @@ PER_PERSON_THRESHOLD = 20  # 补贴门槛 人均单量
 STAFF_OVERRIDES = {
     '2026-06-17': {
         '分段履约广州中大附属第六医院': 2,  # 6.18才确认编制
-    },
-    '2026-06-18': {
-        '分段履约广州绿地星玥': 4,  # 实际排班4人
     },
 }
 
@@ -351,6 +348,23 @@ def process_date(date_str):
     st = pd.DataFrame(station_rows).sort_values('订单量', ascending=False)
     st_ours = st[st['归属'] == '我方']
     st_comps = st[st['归属'] == '竞争方']
+
+    # ── 二段交接骑手自动核对 ──
+    rider_check = {}  # station -> {actual, configured, riders}
+    for s in df['站点名称'].unique():
+        sdf = df[df['站点名称'] == s]
+        # 从经手骑手2 + 经手骑手3 提取二段人员
+        riders = set()
+        for col in ['经手骑手2', '经手骑手3']:
+            if col in df.columns:
+                for r in sdf[col].dropna():
+                    riders.add(str(r).strip())
+        actual = len(riders)
+        configured = staff.get(s)
+        if configured and actual != configured and s not in COMPETITORS:
+            names = '、'.join(sorted(riders)) if riders else '(无)'
+            print(f'  [编制差异] {s.replace("分段履约广州","")}: 编制{configured}人 实际{actual}人 — {names}')
+        rider_check[s] = {'actual': actual, 'configured': configured, 'riders': riders}
 
     # ── 图表 ──
     known = st_ours[st_ours['编制'].notna()].copy().sort_values('人均单量')
