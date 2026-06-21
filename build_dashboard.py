@@ -350,9 +350,10 @@ def process_date(date_str):
         s_canc = (sdf['物流单状态'] == '已取消').sum()
         s_pickup = (sdf['物流单状态'] == '已取货').sum()
         grp = sdf['归属'].iloc[0]
-        stf_configured = staff.get(s)       # 编制配置值
-        stf = actual_staff.get(s, stf_configured)  # 实际检测值（用于计算）
-        per_person = cnt / stf if stf else None
+        stf_configured = staff.get(s)       # 编制人数（用于补贴门槛）
+        stf_actual = actual_staff.get(s, stf_configured)  # 实际人数（用于人工成本）
+        stf = stf_configured                # 默认用编制
+        per_person = cnt / stf_configured if stf_configured else None  # 人均用编制算
 
         if stf and per_person:
             gap = 20 - per_person
@@ -373,7 +374,8 @@ def process_date(date_str):
             '订单量': cnt, '已完成': s_done, '已取消': s_canc, '取消赔偿': canc_comp,
             '已取货': s_pickup,
             '完成率': round(s_done / cnt * 100, 1) if cnt else 0,
-            '编制': stf,
+            '编制': stf_configured,
+            '实际人数': stf_actual,
             '人均单量': round(per_person, 1) if per_person else None,
             '距20单缺口': gap,
             '达标': 'Y' if meets else ('N' if stf else '?'),
@@ -1031,24 +1033,27 @@ function exportStaffConfig() {{
         stf = r['编制']
         per_p = r['人均单量'] if pd.notna(r['人均单量']) else None
 
-        if grp == '我方' and stf and cnt > 0:
+        paper = r['编制']         # 编制人数，用于补贴
+        actual = r['实际人数']     # 实际人数，用于人工成本
+        if grp == '我方' and paper and cnt > 0:
             settlement = cnt * SETTLEMENT_PRICE
             rider_income = cnt * RIDER_FEE
             revenue = settlement + rider_income
             hours_per = HOURS_OVERRIDES.get(date_str, {}).get(r['全名'],
                           STATION_HOURS.get(r['全名'], HOURS_PER_PERSON))
-            labor = stf * hours_per * STATION_LABOR_RATE.get(r['全名'], LABOR_RATE)
+            labor = actual * hours_per * STATION_LABOR_RATE.get(r['全名'], LABOR_RATE)
             material = MATERIAL_PER_STATION
             canc_comp = r['取消赔偿']
             meets = per_p and per_p >= PER_PERSON_THRESHOLD
-            subsidy = (stf - 1) * SUBSIDY_PER_EXTRA if meets else 0
+            subsidy = (paper - 1) * SUBSIDY_PER_EXTRA if meets else 0  # 补贴用编制
             profit = revenue + subsidy - labor - material - canc_comp
 
             station_profits.append({
                 '站点': r['站点'],
                 '归属': grp,
                 '订单量': cnt,
-                '编制': stf,
+                '编制': paper,
+                '实际人数': actual,
                 '人均单量': per_p,
                 '已取消': r['已取消'],
                 '取消赔偿': round(canc_comp, 1),
