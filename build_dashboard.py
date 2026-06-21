@@ -298,6 +298,34 @@ def process_date(date_str):
     if date_str in STAFF_OVERRIDES:
         staff.update(STAFF_OVERRIDES[date_str])
 
+    # ── 从经手骑手2+3 自动检测各站实际人数 ──
+    actual_staff = {}  # 站点 → 实际人数
+    staff_detail = {}  # 站点 → 骑手名单
+    for s in df['站点名称'].unique():
+        if s in COMPETITORS:
+            actual_staff[s] = staff.get(s, 0)
+            continue
+        sdf = df[df['站点名称'] == s]
+        riders = set()
+        for col in ['经手骑手2', '经手骑手3']:
+            if col in df.columns:
+                for r in sdf[col].dropna():
+                    riders.add(str(r).strip())
+        actual = len(riders)
+        configured = staff.get(s)
+        if actual > 0:
+            actual_staff[s] = actual
+            staff_detail[s] = riders
+            if configured and actual != configured:
+                names = '、'.join(sorted(riders))
+                print(f'  [编制修正] {s.replace("分段履约广州","")}: {configured}→{actual}人 — {names}')
+        elif configured:
+            actual_staff[s] = configured  # 无骑手数据时回退到配置值
+            staff_detail[s] = set()
+        else:
+            actual_staff[s] = 0
+            staff_detail[s] = set()
+
     # 分类
     df['归属'] = df['站点名称'].apply(lambda s: '竞争方' if s in COMPETITORS else '我方')
 
@@ -322,7 +350,8 @@ def process_date(date_str):
         s_canc = (sdf['物流单状态'] == '已取消').sum()
         s_pickup = (sdf['物流单状态'] == '已取货').sum()
         grp = sdf['归属'].iloc[0]
-        stf = staff.get(s)
+        stf_configured = staff.get(s)       # 编制配置值
+        stf = actual_staff.get(s, stf_configured)  # 实际检测值（用于计算）
         per_person = cnt / stf if stf else None
 
         if stf and per_person:
@@ -360,22 +389,7 @@ def process_date(date_str):
     st_ours = st[st['归属'] == '我方']
     st_comps = st[st['归属'] == '竞争方']
 
-    # ── 二段交接骑手自动核对 ──
-    rider_check = {}  # station -> {actual, configured, riders}
-    for s in df['站点名称'].unique():
-        sdf = df[df['站点名称'] == s]
-        # 从经手骑手2 + 经手骑手3 提取二段人员
-        riders = set()
-        for col in ['经手骑手2', '经手骑手3']:
-            if col in df.columns:
-                for r in sdf[col].dropna():
-                    riders.add(str(r).strip())
-        actual = len(riders)
-        configured = staff.get(s)
-        if configured and actual != configured and s not in COMPETITORS:
-            names = '、'.join(sorted(riders)) if riders else '(无)'
-            print(f'  [编制差异] {s.replace("分段履约广州","")}: 编制{configured}人 实际{actual}人 — {names}')
-        rider_check[s] = {'actual': actual, 'configured': configured, 'riders': riders}
+    # rider_check 已在上方自动检测中完成（actual_staff / staff_detail）
 
     # ── 图表 ──
     known = st_ours[st_ours['编制'].notna()].copy().sort_values('人均单量')
