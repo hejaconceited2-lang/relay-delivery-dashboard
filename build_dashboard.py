@@ -12,7 +12,8 @@ from datetime import datetime
 import sys, os, glob, json
 
 # ════════════════════════════════════════════════════════
-# 站点编制配置（基准配置，持续更新）
+# 站点编制配置（仅作回退：当天无骑手数据时使用）
+# 编制优先从数据自动检测：经手骑手2~N 不重复人数
 # ════════════════════════════════════════════════════════
 KNOWN_STAFF = {
     '分段履约广州绿地星玥': 4, '分段履约广州万菱广场': 2,
@@ -298,29 +299,41 @@ def process_date(date_str):
     if date_str in STAFF_OVERRIDES:
         staff.update(STAFF_OVERRIDES[date_str])
 
-    # ── 从经手骑手2+3 自动检测各站实际人数 ──
-    actual_staff = {}  # 站点 → 实际人数
+    # ── 从经手骑手2~N 自动检测各站编制（二段及以后接力人员）──
+    # 编制 = 数据中实际出现的接力人员数（经手骑手2/3/4/5...）
+    # 一段（经手骑手1）是美团骑手，不参与我方编制
+    actual_staff = {}  # 站点 → 实际人数（与编制统一）
     staff_detail = {}  # 站点 → 骑手名单
+    # 自动发现所有"经手骑手"列（排除经手骑手1 = 一段美团骑手）
+    rider_cols = [c for c in df.columns
+                  if c.startswith('经手骑手') and c != '经手骑手1']
+    if not rider_cols:
+        rider_cols = ['经手骑手2', '经手骑手3']  # 回退兼容
+
     for s in df['站点名称'].unique():
         if s in COMPETITORS:
             actual_staff[s] = staff.get(s, 0)
             continue
         sdf = df[df['站点名称'] == s]
         riders = set()
-        for col in ['经手骑手2', '经手骑手3']:
+        for col in rider_cols:
             if col in df.columns:
                 for r in sdf[col].dropna():
                     riders.add(str(r).strip())
-        actual = len(riders)
+        detected = len(riders)
         configured = staff.get(s)
-        if actual > 0:
-            actual_staff[s] = actual
+
+        if detected > 0:
+            # 用自动检测值作为编制
+            staff[s] = detected
+            actual_staff[s] = detected
             staff_detail[s] = riders
-            if configured and actual != configured:
+            if configured and detected != configured:
                 names = '、'.join(sorted(riders))
-                print(f'  [编制修正] {s.replace("分段履约广州","")}: {configured}→{actual}人 — {names}')
+                print(f'  [编制更新] {s.replace("分段履约广州","")}: {configured}→{detected}人 — {names}')
         elif configured:
-            actual_staff[s] = configured  # 无骑手数据时回退到配置值
+            # 无骑手数据时回退到配置值
+            actual_staff[s] = configured
             staff_detail[s] = set()
         else:
             actual_staff[s] = 0
