@@ -1,0 +1,263 @@
+[
+  {
+    "date": "2026-06-11",
+    "total": 122,
+    "done": 120,
+    "canc": 2,
+    "pickup": 0,
+    "canc_comp": 60.4,
+    "avg_time": 67.4,
+    "median_time": 58.0,
+    "max_time": 319.8,
+    "over60": 57,
+    "peak_h": 18,
+    "peak_cnt": 39,
+    "t_min": "11:35",
+    "t_max": "19:11",
+    "riders": [
+      "张欢",
+      "彭裕恩",
+      "李源"
+    ],
+    "rider_count": 3
+  },
+  {
+    "date": "2026-06-12",
+    "total": 151,
+    "done": 151,
+    "canc": 0,
+    "pickup": 0,
+    "canc_comp": 0.0,
+    "avg_time": 51.0,
+    "median_time": 47.0,
+    "max_time": 268.0,
+    "over60": 38,
+    "peak_h": 18,
+    "peak_cnt": 42,
+    "t_min": "07:18",
+    "t_max": "19:20",
+    "riders": [
+      "彭裕恩"
+    ],
+    "rider_count": 1
+  },
+  {
+    "date": "2026-06-13",
+    "total": 214,
+    "done": 156,
+    "canc": 58,
+    "pickup": 0,
+    "canc_comp": 1680.8,
+    "avg_time": 81.7,
+    "median_time": 61.4,
+    "max_time": 647.1,
+    "over60": 81,
+    "peak_h": 11,
+    "peak_cnt": 51,
+    "t_min": "03:42",
+    "t_max": "19:18",
+    "riders": [
+      "彭裕恩"
+    ],
+    "rider_count": 1
+  },
+  {
+    "date": "2026-06-14",
+    "total": 230,
+    "done": 196,
+    "canc": 34,
+    "pickup": 0,
+    "canc_comp": 1190.5,
+    "avg_time": 95.6,
+    "median_time": 76.6,
+    "max_time": 536.8,
+    "over60": 133,
+    "peak_h": 12,
+    "peak_cnt": 56,
+    "t_min": "03:37",
+    "t_max": "23:51",
+    "riders": [
+      "彭裕恩"
+    ],
+    "rider_count": 1
+  },
+  {
+    "date": "2026-06-15",
+    "total": 149,
+    "done": 144,
+    "canc": 5,
+    "pickup": 0,
+    "canc_comp": 145.5,
+    "avg_time": 59.5,
+    "median_time": 58.0,
+    "max_time": 360.7,
+    "over60": 67,
+    "peak_h": 11,
+    "peak_cnt": 37,
+    "t_min": "10:17",
+    "t_max": "19:21",
+    "riders": [
+      "张嘉锐",
+      "彭裕恩",
+      "黄嘉崇"
+    ],
+    "rider_count": 3
+  },
+  {
+    "date": "2026-06-16",
+    "total": 134,
+    "done": 133,
+    "canc": 1,
+    "pickup": 0,
+    "canc_comp": 20.1,
+    "avg_time": 68.2,
+    "median_time": 57.2,
+    "max_time": 759.7,
+    "over60": 62,
+    "peak_h": 18,
+    "peak_cnt": 44,
+    "t_min": "00:09",
+    "t_max": "19:12",
+    "riders": [
+      "彭裕恩",
+      "黄嘉崇"
+    ],
+    "rider_count": 2
+  },
+  {
+    "date": "2026-06-17",
+    "total": 123,
+    "done": 123,
+    "canc": 0,
+    "pickup": 0,
+    "canc_comp": 0.0,
+    "avg_time": 54.4,
+    "median_time": 55.0,
+    "max_time": 111.5,
+    "over60": 47,
+    "peak_h": 18,
+    "peak_cnt": 36,
+    "t_min": "10:33",
+    "t_max": "19:00",
+    "riders": [
+      "张嘉锐",
+      "张园园",
+      "梁世兴",
+      "黄嘉崇"
+    ],
+    "rider_count": 4
+  },
+  {
+    "date": "2026-06-18",
+    "total": 86,
+    "done": 85,
+    "canc": 1,
+    "pickup": 0,
+    "canc_comp": 42.8,
+    "avg_time": 59.8,
+    "median_time": 48.2,
+    "max_time": 650.1,
+    "over60": 24,
+    "peak_h": 11,
+    "peak_cnt": 26,
+    "t_min": "00:44",
+    "t_max": "19:07",
+    "riders": [
+      "张嘉锐",
+      "张园园",
+      "梁世兴",
+      "黄嘉崇"
+    ],
+    "rider_count": 4
+  },
+  {
+    "date": "2026-06-19",
+    "total": 155,
+    "done": 152,
+    "canc": 3,
+    "pickup": 0,
+    "canc_comp": 60.5,
+    "avg_time": 53.5,
+    "median_time": 47.5,
+    "max_time": 633.6,
+    "over60": 37,
+    "peak_h": 12,
+    "peak_cnt": 44,
+    "t_min": "01:46",
+    "t_max": "19:22",
+    "riders": [
+      "张嘉锐",
+      "梁世兴",
+      "黄嘉崇",
+      "黄慧源"
+    ],
+    "rider_count": 4
+  },
+  {
+    "date": "2026-06-20",
+    "total": 130,
+    "done": 130,
+    "canc": 0,
+    "pickup": 0,
+    "canc_comp": 0.0,
+    "avg_time": 51.4,
+    "median_time": 47.2,
+    "max_time": 529.6,
+    "over60": 30,
+    "peak_h": 11,
+    "peak_cnt": 33,
+    "t_min": "02:57",
+    "t_max": "19:04",
+    "riders": [
+      "张嘉锐",
+      "梁世兴",
+      "黄嘉崇"
+    ],
+    "rider_count": 3
+  },
+  {
+    "date": "2026-06-21",
+    "total": 161,
+    "done": 161,
+    "canc": 0,
+    "pickup": 0,
+    "canc_comp": 0.0,
+    "avg_time": 50.7,
+    "median_time": 52.0,
+    "max_time": 121.8,
+    "over60": 45,
+    "peak_h": 12,
+    "peak_cnt": 38,
+    "t_min": "10:34",
+    "t_max": "19:16",
+    "riders": [
+      "张嘉锐",
+      "黄嘉崇"
+    ],
+    "rider_count": 2
+  },
+  {
+    "date": "2026-06-22",
+    "total": 71,
+    "done": 71,
+    "canc": 0,
+    "pickup": 0,
+    "canc_comp": 0.0,
+    "avg_time": 42.9,
+    "median_time": 44.5,
+    "max_time": 77.5,
+    "over60": 11,
+    "peak_h": 12,
+    "peak_cnt": 27,
+    "t_min": "10:22",
+    "t_max": "13:55",
+    "riders": [
+      "伍祁湘",
+      "张嘉锐",
+      "梁世兴",
+      "黄嘉崇",
+      "黎锐佳"
+    ],
+    "rider_count": 5
+  }
+]
