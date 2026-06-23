@@ -185,6 +185,36 @@ body::before {
   font-size: 26px; font-weight: 800; margin: 4px 0;
 }
 
+.section-chart {
+  background: var(--surface);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px 22px; margin-bottom: 16px;
+}
+.section-chart h2 {
+  font-size: 15px; font-weight: 700; color: var(--text);
+  padding-bottom: 10px; margin-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 8px;
+}
+.section-chart h2::before {
+  content: ''; width: 4px; height: 18px; border-radius: 2px;
+  background: var(--accent);
+}
+table { width: 100%; border-collapse: collapse; font-size: 12px; }
+th {
+  background: rgba(30,41,59,0.6); color: var(--text-dim); font-weight: 600;
+  padding: 9px 10px; text-align: left; font-size: 10.5px;
+  text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap;
+}
+td {
+  padding: 7px 10px; border-bottom: 1px solid rgba(148,163,184,0.06);
+  color: var(--text-dim);
+}
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: rgba(129,140,248,0.04); }
+
 .footer {
   text-align: center;
   font-size: 11px;
@@ -209,7 +239,7 @@ body::before {
 
 <div class="header">
   <h1>接力送 · 日订单运营看板</h1>
-  <div class="sub">分段履约站点每日订单数据 &middot; 自动更新 &middot; <span id="updateTime">06-23 23:24</span></div>
+  <div class="sub">分段履约站点每日订单数据 &middot; 自动更新 &middot; <span id="updateTime">06-23 23:54</span></div>
 </div>
 
 <div class="container">
@@ -232,6 +262,173 @@ body::before {
       <div class="value" style="color:#fbbf24;font-size:14px;">06-23</div>
     </div>
   </div>
+
+      <div class="section-chart" style="margin-bottom:20px;">
+        <h2>📊 站点累计汇总（17天）</h2>
+        <div style="max-height:500px;overflow:auto;">
+        <table>
+          <thead><tr>
+            <th>站点</th><th>累计单量</th><th>天数</th><th>日均</th><th>系统登记</th><th>真实人数</th>
+            <th>完成/取消</th><th>累计结算</th><th>累计人力</th><th>累计补贴</th><th>累计赔偿</th><th>累计净利</th>
+          </tr></thead>
+          <tbody>
+              <tr>
+                <td style="color:var(--text);font-weight:500">绿地星玥</td>
+                <td style="color:#818cf8;font-weight:600">1943</td>
+                <td style="color:var(--text-dim)">13天</td>
+                <td style="color:var(--text-dim)">149单/天</td>
+                <td style="color:#a78bfa">7人</td>
+                <td style="color:#fbbf24">7人</td>
+                <td style="color:var(--text-dim)">1838 / <span style="color:#f87171">105</span></td>
+                <td style="color:#34d399">¥4,858</td>
+                <td style="color:#f87171">-¥9,660</td>
+                <td style="color:#fbbf24">+¥1,840</td>
+                <td style="color:#f87171">-¥3,229</td>
+                <td style="color:#f87171;font-weight:700">¥-6,235</td>
+              </tr>
+              <tr>
+                <td style="color:var(--text);font-weight:500">中大附属第六医院</td>
+                <td style="color:#818cf8;font-weight:600">1093</td>
+                <td style="color:var(--text-dim)">7天</td>
+                <td style="color:var(--text-dim)">156单/天</td>
+                <td style="color:#a78bfa">13人</td>
+                <td style="color:#fbbf24">13人</td>
+                <td style="color:var(--text-dim)">1083 / <span style="color:#f87171">10</span></td>
+                <td style="color:#34d399">¥2,732</td>
+                <td style="color:#f87171">-¥4,410</td>
+                <td style="color:#fbbf24">+¥3,360</td>
+                <td style="color:#f87171">-¥361</td>
+                <td style="color:#34d399;font-weight:700">¥+1,298</td>
+              </tr>
+              <tr>
+                <td style="color:var(--text);font-weight:500">万科欧泊</td>
+                <td style="color:#818cf8;font-weight:600">681</td>
+                <td style="color:var(--text-dim)">17天</td>
+                <td style="color:var(--text-dim)">40单/天</td>
+                <td style="color:#a78bfa">2人</td>
+                <td style="color:#fbbf24">2人</td>
+                <td style="color:var(--text-dim)">652 / <span style="color:#f87171">29</span></td>
+                <td style="color:#34d399">¥1,702</td>
+                <td style="color:#f87171">-¥4,050</td>
+                <td style="color:#fbbf24">+¥400</td>
+                <td style="color:#f87171">-¥1,018</td>
+                <td style="color:#f87171;font-weight:700">¥-3,022</td>
+              </tr>
+              <tr>
+                <td style="color:var(--text);font-weight:500">和业广场</td>
+                <td style="color:#818cf8;font-weight:600">475</td>
+                <td style="color:var(--text-dim)">7天</td>
+                <td style="color:var(--text-dim)">68单/天</td>
+                <td style="color:#a78bfa">3人</td>
+                <td style="color:#fbbf24">3人</td>
+                <td style="color:var(--text-dim)">463 / <span style="color:#f87171">12</span></td>
+                <td style="color:#34d399">¥1,188</td>
+                <td style="color:#f87171">-¥1,530</td>
+                <td style="color:#fbbf24">+¥720</td>
+                <td style="color:#f87171">-¥242</td>
+                <td style="color:#34d399;font-weight:700">¥+112</td>
+              </tr>
+              <tr>
+                <td style="color:var(--text);font-weight:500">中大附三岭南医院</td>
+                <td style="color:#818cf8;font-weight:600">380</td>
+                <td style="color:var(--text-dim)">6天</td>
+                <td style="color:var(--text-dim)">63单/天</td>
+                <td style="color:#a78bfa">4人</td>
+                <td style="color:#fbbf24">4人</td>
+                <td style="color:var(--text-dim)">345 / <span style="color:#f87171">35</span></td>
+                <td style="color:#34d399">¥950</td>
+                <td style="color:#f87171">-¥1,710</td>
+                <td style="color:#fbbf24">+¥640</td>
+                <td style="color:#f87171">-¥1,093</td>
+                <td style="color:#f87171;font-weight:700">¥-1,233</td>
+              </tr>
+              <tr>
+                <td style="color:var(--text);font-weight:500">万菱广场</td>
+                <td style="color:#818cf8;font-weight:600">308</td>
+                <td style="color:var(--text-dim)">8天</td>
+                <td style="color:var(--text-dim)">38单/天</td>
+                <td style="color:#a78bfa">2人</td>
+                <td style="color:#fbbf24">2人</td>
+                <td style="color:var(--text-dim)">298 / <span style="color:#f87171">10</span></td>
+                <td style="color:#34d399">¥770</td>
+                <td style="color:#f87171">-¥1,440</td>
+                <td style="color:#fbbf24">+¥320</td>
+                <td style="color:#f87171">-¥255</td>
+                <td style="color:#f87171;font-weight:700">¥-631</td>
+              </tr>
+              <tr>
+                <td style="color:var(--text);font-weight:500">珠江国际轻纺城</td>
+                <td style="color:#818cf8;font-weight:600">256</td>
+                <td style="color:var(--text-dim)">6天</td>
+                <td style="color:var(--text-dim)">43单/天</td>
+                <td style="color:#a78bfa">2人</td>
+                <td style="color:#fbbf24">2人</td>
+                <td style="color:var(--text-dim)">197 / <span style="color:#f87171">59</span></td>
+                <td style="color:#34d399">¥640</td>
+                <td style="color:#f87171">-¥1,080</td>
+                <td style="color:#fbbf24">+¥320</td>
+                <td style="color:#f87171">-¥1,204</td>
+                <td style="color:#f87171;font-weight:700">¥-1,343</td>
+              </tr>
+              <tr>
+                <td style="color:var(--text);font-weight:500">金鹰大厦</td>
+                <td style="color:#818cf8;font-weight:600">200</td>
+                <td style="color:var(--text-dim)">7天</td>
+                <td style="color:var(--text-dim)">29单/天</td>
+                <td style="color:#a78bfa">2人</td>
+                <td style="color:#fbbf24">2人</td>
+                <td style="color:var(--text-dim)">200 / <span style="color:#f87171">0</span></td>
+                <td style="color:#34d399">¥500</td>
+                <td style="color:#f87171">-¥1,260</td>
+                <td style="color:#fbbf24">+¥80</td>
+                <td style="color:#f87171">¥0</td>
+                <td style="color:#f87171;font-weight:700">¥-703</td>
+              </tr>
+              <tr>
+                <td style="color:var(--text);font-weight:500">汇德国际</td>
+                <td style="color:#818cf8;font-weight:600">79</td>
+                <td style="color:var(--text-dim)">2天</td>
+                <td style="color:var(--text-dim)">40单/天</td>
+                <td style="color:#a78bfa">3人</td>
+                <td style="color:#fbbf24">3人</td>
+                <td style="color:var(--text-dim)">72 / <span style="color:#f87171">7</span></td>
+                <td style="color:#34d399">¥198</td>
+                <td style="color:#f87171">-¥450</td>
+                <td style="color:#fbbf24">¥0</td>
+                <td style="color:#f87171">-¥176</td>
+                <td style="color:#f87171;font-weight:700">¥-436</td>
+              </tr>
+              <tr>
+                <td style="color:var(--text);font-weight:500">华林国际C馆</td>
+                <td style="color:#818cf8;font-weight:600">62</td>
+                <td style="color:var(--text-dim)">5天</td>
+                <td style="color:var(--text-dim)">12单/天</td>
+                <td style="color:#a78bfa">2人</td>
+                <td style="color:#fbbf24">2人</td>
+                <td style="color:var(--text-dim)">48 / <span style="color:#f87171">14</span></td>
+                <td style="color:#34d399">¥155</td>
+                <td style="color:#f87171">-¥540</td>
+                <td style="color:#fbbf24">¥0</td>
+                <td style="color:#f87171">-¥280</td>
+                <td style="color:#f87171;font-weight:700">¥-682</td>
+              </tr>
+              <tr>
+                <td style="color:var(--text);font-weight:500">云升科技园</td>
+                <td style="color:#818cf8;font-weight:600">22</td>
+                <td style="color:var(--text-dim)">2天</td>
+                <td style="color:var(--text-dim)">11单/天</td>
+                <td style="color:#a78bfa">1人</td>
+                <td style="color:#fbbf24">1人</td>
+                <td style="color:var(--text-dim)">22 / <span style="color:#f87171">0</span></td>
+                <td style="color:#34d399">¥55</td>
+                <td style="color:#f87171">-¥180</td>
+                <td style="color:#fbbf24">¥0</td>
+                <td style="color:#f87171">¥0</td>
+                <td style="color:#f87171;font-weight:700">¥-132</td>
+              </tr></tbody>
+        </table>
+        </div>
+      </div>
   <div class="main-layout">
     <div class="main-cards">
 

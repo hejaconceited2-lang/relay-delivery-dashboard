@@ -1716,6 +1716,63 @@ def update_index(dates_summary):
     num_dates = len(dates_summary)
     latest_date = dates_summary[0]['date'] if dates_summary else 'N/A'
 
+    # ── 站点累计汇总 ──
+    # 聚合所有日期的 station_profits
+    station_cum = {}  # {站点名: {orders, done, canc, days, profit, revenue, subsidy, labor, canc_comp}}
+    for d in dates_summary:
+        for sp in d.get('station_profits', []):
+            sn = sp['站点']
+            if sn not in station_cum:
+                station_cum[sn] = {'orders': 0, 'done': 0, 'canc': 0, 'days': 0, 'profit': 0.0,
+                                   'revenue': 0.0, 'subsidy': 0.0, 'labor': 0.0, 'canc_comp': 0.0,
+                                   'registered': sp.get('系统登记', 0), 'onsite': sp.get('真实人数', 0)}
+            station_cum[sn]['orders'] += sp['订单量']
+            station_cum[sn]['done'] += sp['订单量'] - sp.get('已取消', 0)
+            station_cum[sn]['canc'] += sp.get('已取消', 0)
+            station_cum[sn]['days'] += 1
+            station_cum[sn]['profit'] += sp.get('净利', 0)
+            station_cum[sn]['revenue'] += sp.get('结算收入', 0)
+            station_cum[sn]['subsidy'] += sp.get('补贴', 0)
+            station_cum[sn]['labor'] += sp.get('人力成本', 0)
+            station_cum[sn]['canc_comp'] += sp.get('取消赔偿', 0)
+
+    # Sort by cumulative orders descending
+    cum_sorted = sorted(station_cum.items(), key=lambda x: x[1]['orders'], reverse=True)
+
+    cum_rows = ''
+    for sn, sc in cum_sorted:
+        pc = '#34d399' if sc['profit'] >= 0 else '#f87171'
+        avg_per_day = sc['orders'] / sc['days'] if sc['days'] > 0 else 0
+        cum_rows += f"""
+              <tr>
+                <td style="color:var(--text);font-weight:500">{sn}</td>
+                <td style="color:#818cf8;font-weight:600">{sc['orders']}</td>
+                <td style="color:var(--text-dim)">{sc['days']}天</td>
+                <td style="color:var(--text-dim)">{avg_per_day:.0f}单/天</td>
+                <td style="color:#a78bfa">{sc['registered']}人</td>
+                <td style="color:#fbbf24">{sc['onsite']}人</td>
+                <td style="color:var(--text-dim)">{sc['done']} / <span style="color:#f87171">{sc['canc']}</span></td>
+                <td style="color:#34d399">¥{sc['revenue']:,.0f}</td>
+                <td style="color:#f87171">-¥{sc['labor']:,.0f}</td>
+                <td style="color:#fbbf24">{'+¥'+format(sc['subsidy'],',.0f') if sc['subsidy'] > 0 else '¥0'}</td>
+                <td style="color:#f87171">{'-¥'+format(sc['canc_comp'],',.0f') if sc['canc_comp'] > 0 else '¥0'}</td>
+                <td style="color:{pc};font-weight:700">¥{sc['profit']:+,.0f}</td>
+              </tr>"""
+
+    cum_table_html = f"""
+      <div class="section-chart" style="margin-bottom:20px;">
+        <h2>📊 站点累计汇总（{num_dates}天）</h2>
+        <div style="max-height:500px;overflow:auto;">
+        <table>
+          <thead><tr>
+            <th>站点</th><th>累计单量</th><th>天数</th><th>日均</th><th>系统登记</th><th>真实人数</th>
+            <th>完成/取消</th><th>累计结算</th><th>累计人力</th><th>累计补贴</th><th>累计赔偿</th><th>累计净利</th>
+          </tr></thead>
+          <tbody>{cum_rows}</tbody>
+        </table>
+        </div>
+      </div>"""
+
     # ── 走势图 ──
     trend_data = sorted(dates_summary, key=lambda x: x['date'])
     trend_dates = [f"{int(d['date'][5:7])}/{int(d['date'][8:10])}" for d in trend_data]  # M/D
@@ -2010,6 +2067,36 @@ body::before {{
   font-size: 26px; font-weight: 800; margin: 4px 0;
 }}
 
+.section-chart {{
+  background: var(--surface);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px 22px; margin-bottom: 16px;
+}}
+.section-chart h2 {{
+  font-size: 15px; font-weight: 700; color: var(--text);
+  padding-bottom: 10px; margin-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 8px;
+}}
+.section-chart h2::before {{
+  content: ''; width: 4px; height: 18px; border-radius: 2px;
+  background: var(--accent);
+}}
+table {{ width: 100%; border-collapse: collapse; font-size: 12px; }}
+th {{
+  background: rgba(30,41,59,0.6); color: var(--text-dim); font-weight: 600;
+  padding: 9px 10px; text-align: left; font-size: 10.5px;
+  text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap;
+}}
+td {{
+  padding: 7px 10px; border-bottom: 1px solid rgba(148,163,184,0.06);
+  color: var(--text-dim);
+}}
+tr:last-child td {{ border-bottom: none; }}
+tr:hover td {{ background: rgba(129,140,248,0.04); }}
+
 .footer {{
   text-align: center;
   font-size: 11px;
@@ -2057,6 +2144,7 @@ body::before {{
       <div class="value" style="color:#fbbf24;font-size:14px;">{latest_date[5:]}</div>
     </div>
   </div>
+{cum_table_html}
   <div class="main-layout">
     <div class="main-cards">
 {cards_html}
