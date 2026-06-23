@@ -114,6 +114,130 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 # 核心逻辑
 # ════════════════════════════════════════════════════════
 
+# 站点历史缓存（避免重复扫描）
+_station_histories_cache = None
+
+
+def get_station_histories():
+    """扫描所有日期目录, 构建每个站点的逐日历史 DataFrame。
+    返回: {站点全名: DataFrame(columns=[date, orders, done, canc, staff, per, profit, canc_comp])}
+    """
+    global _station_histories_cache
+    if _station_histories_cache is not None:
+        return _station_histories_cache
+
+    dates = sorted(
+        d for d in os.listdir(BASE_DIR)
+        if len(d) == 8 and d[2] == '-' and d[5] == '-'
+        and os.path.isdir(os.path.join(BASE_DIR, d))
+    )
+
+    station_data = {}  # station → list of daily records
+
+    for dd in dates:
+        candidates = glob.glob(os.path.join(BASE_DIR, dd, '*.xls')) + \
+                     glob.glob(os.path.join(BASE_DIR, dd, '*.xlsx'))
+        if not candidates:
+            continue
+        df = pd.read_excel(candidates[0])
+        df = df[df['站点名称'].str.contains('分段履约', na=False)].copy()
+        date_obj = datetime.strptime(f'20{dd[0:2]}-{dd[3:5]}-{dd[6:8]}', '%Y-%m-%d')
+        date_display = date_obj.strftime('%m/%d')
+        year_date = date_obj.strftime('%Y-%m-%d')
+
+        rider_cols = [c for c in df.columns
+                      if c.startswith('经手骑手') and c != '经手骑手1']
+
+        for s in df['站点名称'].unique():
+            if s in COMPETITORS:
+                continue
+            sdf = df[df['站点名称'] == s]
+            cnt = len(sdf)
+            s_done = (sdf['物流单状态'] == '已送达').sum()
+            s_canc = (sdf['物流单状态'] == '已取消').sum()
+            canc_comp = sdf.loc[sdf['物流单状态'] == '已取消', '订单实付'].sum()
+
+            riders = set()
+            for col in rider_cols:
+                if col in df.columns:
+                    for r in sdf[col].dropna():
+                        riders.add(str(r).strip())
+            staff = len(riders) or 0
+            per = cnt / staff if staff > 0 else 0
+            meets = per >= PER_PERSON_THRESHOLD if staff > 0 else False
+            subsidy = (staff - 1) * SUBSIDY_PER_EXTRA if meets else 0
+
+            hours_per = HOURS_OVERRIDES.get(year_date, {}).get(s,
+                        STATION_HOURS.get(s, HOURS_PER_PERSON))
+            rate = STATION_LABOR_RATE.get(s, LABOR_RATE)
+            labor = staff * hours_per * rate
+            profit = cnt * SETTLEMENT_PRICE + subsidy - labor - MATERIAL_PER_STATION - canc_comp
+
+            if s not in station_data:
+                station_data[s] = []
+            station_data[s].append({
+                'date': date_display,
+                'date_full': year_date,
+                'orders': cnt, 'done': s_done, 'canc': s_canc,
+                'staff': staff if staff > 0 else None,
+                'per': round(per, 1) if staff > 0 else None,
+                'meets': meets,
+                'profit': round(profit, 1),
+                'canc_comp': round(canc_comp, 1),
+            })
+
+    _station_histories_cache = station_data
+    return station_data
+
+
+def make_station_trend(station_name, history, color='#818cf8'):
+    """生成站点日走势图: 单量柱 + 净利折线"""
+    if not history or len(history) < 2:
+        return '<p style="color:#64748b">数据不足（需2天以上）</p>'
+
+    dates = [h['date'] for h in history]
+    orders = [h['orders'] for h in history]
+    profits = [h['profit'] for h in history]
+    staffs = [h['staff'] for h in history]
+    pers = [h['per'] for h in history]
+
+    # 柱状图: 单量, 颜色按达标/未达标
+    bar_colors = ['#34d399' if h['meets'] else '#f87171' for h in history]
+
+    fig = go.Figure()
+    fig.add_trace(go.Bar(
+        x=dates, y=orders, name='日单量',
+        marker_color=bar_colors,
+        text=orders, textposition='outside',
+        textfont=dict(color='#e2e8f0', size=10),
+        hovertemplate='%{x}<br>%{y}单<br>人均%{customdata}单/人<extra></extra>',
+        customdata=[f'{p}' if p else '?' for p in pers],
+    ))
+    fig.add_trace(go.Scatter(
+        x=dates, y=profits, name='日净利',
+        mode='lines+markers', yaxis='y2',
+        line=dict(color='#fbbf24', width=2.5),
+        marker=dict(size=7, color='#fbbf24'),
+        text=[f'¥{p:+,.0f}' for p in profits],
+        textposition='top center',
+        textfont=dict(color='#fcd34d', size=10),
+        hovertemplate='%{x}<br>净利 ¥%{y:+,.0f}<extra></extra>',
+    ))
+    # 盈亏平衡线
+    fig.add_hline(y=0, line_dash='dot', line_color='rgba(148,163,184,0.4)', line_width=1, yref='y2')
+
+    fig.update_layout(
+        title=f'{station_name} · 日走势',
+        height=320, xaxis_tickangle=-30,
+        yaxis=dict(title=None, gridcolor='rgba(148,163,184,0.06)'),
+        yaxis2=dict(title=None, overlaying='y', side='right', showgrid=False),
+        legend=dict(orientation='h', y=1.12, x=0),
+        margin=dict(t=50, b=50, l=45, r=50),
+        hovermode='x unified',
+    )
+    return dark_fig(fig).to_html(full_html=False, include_plotlyjs=False, config=PLOTLY_CONFIG)
+
+
 def dark_fig(fig):
     fig.update_layout(**DARK_LAYOUT)
     return fig
@@ -284,6 +408,8 @@ def build_station_tab(r, station_charts):
             <h2>到达→送达时间线</h2>
             {charts['timeline']}
         </div>
+
+        {charts.get('trend', '')}
     </div>"""
 
 
@@ -552,10 +678,21 @@ def process_date(date_str):
         timeline_title = f'{short} · 到达→送达时间线'
         if pd.notna(s_median):
             timeline_title += f'（接力中位{s_median:.0f}min）'
+        # 站点日走势图
+        trend_html = ''
+        if row['归属'] == '我方':
+            histories = get_station_histories()
+            if full_name in histories and len(histories[full_name]) >= 2:
+                trend_chart = make_station_trend(short, histories[full_name], color)
+                trend_html = ('\n        <div class="section-chart" style="margin-top:16px;">\n'
+                              + trend_chart +
+                              '\n        </div>')
+
         station_charts[full_name] = {
             'hourly': make_hourly_chart(sdf, f'{short} · 分时订单量', color),
             'time': make_time_hist(sdf, f'{short} · 配送时长分布', color),
             'timeline': make_dual_timeline(sdf, timeline_title),
+            'trend': trend_html,
         }
 
     # ── Tab bar ──
