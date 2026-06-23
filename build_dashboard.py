@@ -791,7 +791,8 @@ def process_date(date_str):
         </div>
 
         <div class="kpi-grid">
-            {kpi_card('订单总量', total, f'我方 {len(ours)} | 竞争方 {len(comps)}', '#818cf8')}
+            {kpi_card('我方订单', f'{len(ours)}单', f'{len(st_ours)}站', '#818cf8')}
+            {kpi_card('竞争方订单', f'{len(comps)}单', f'{len(st_comps)}站', '#f87171')}
             {kpi_card('已完成', f'{done_pct:.1f}%', f'{done}已送达 / {canc}取消', '#34d399')}
             {kpi_card('配送中', pickup, '已取货未送达', '#fbbf24')}
             {kpi_card('平均配送时长', f'{avg_time:.0f}min', f'中位 {median_time:.0f}min', '#fbbf24')}
@@ -1123,7 +1124,7 @@ tr td a:hover {{ color:#a5b4fc; text-decoration:underline; }}
 <div class="header">
     <a href="index.html" class="back-link-header">&larr; 返回主页</a>
     <h1>接力送 · 运营看板</h1>
-    <div class="meta">{date_display} &nbsp;·&nbsp; {total}单 &nbsp;·&nbsp; {len(st)}站（我方{len(st_ours)} + 竞争方{len(st_comps)}）&nbsp;·&nbsp; {t_min.strftime('%H:%M')}-{t_max.strftime('%H:%M')} &nbsp;·&nbsp; {now_str} 更新 &nbsp;·&nbsp; <span style="color:{coverage_color}">{coverage_label}</span></div>
+    <div class="meta">{date_display} &nbsp;·&nbsp; 我方 {len(ours)}单/{len(st_ours)}站 &nbsp;|&nbsp; 竞争方 {len(comps)}单/{len(st_comps)}站 &nbsp;·&nbsp; {t_min.strftime('%H:%M')}-{t_max.strftime('%H:%M')} &nbsp;·&nbsp; {now_str} 更新 &nbsp;·&nbsp; <span style="color:{coverage_color}">{coverage_label}</span></div>
 </div>
 
 <div class="tab-bar">{tab_bar}</div>
