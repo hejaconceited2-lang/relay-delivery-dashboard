@@ -339,7 +339,9 @@ def build_station_tab(r, station_charts):
     is_ours = r['归属'] == '我方'
     charts = station_charts[full_name]
     registered = int(r['系统登记']) if pd.notna(r['系统登记']) else None
-    onsite = int(r['真实人数']) if pd.notna(r['真实人数']) else None
+    onsite_confirmed = r.get('真实人数已确认', False)
+    onsite_display = int(r['真实人数']) if pd.notna(r['真实人数']) else None
+    onsite_calc = onsite_display if onsite_confirmed else registered  # 计算时回退到系统登记
 
     if r['达标'] == 'Y':
         badge = '<span class="badge badge-green">达标</span>'
@@ -351,9 +353,9 @@ def build_station_tab(r, station_charts):
         badge = '<span class="badge badge-gray">登记未知</span>'
         status_note = '登记数据缺失'
 
-    if is_ours and onsite:
+    if is_ours and onsite_calc:
         meets_per = r['人均单量'] >= 20 if r['人均单量'] else False
-        subsidy_per_day = (onsite - 1) * 80 if meets_per else 0
+        subsidy_per_day = (onsite_calc - 1) * 80 if meets_per else 0
         subsidy_color = '#34d399' if subsidy_per_day > 0 else '#f87171'
     else:
         subsidy_per_day = 0
@@ -369,8 +371,19 @@ def build_station_tab(r, station_charts):
     s_hours = r.get('工时', HOURS_PER_PERSON)
     s_rate = r.get('时薪', LABOR_RATE)
     registered_editable = 'kpi-editable' if is_ours and registered else ''
+
+    # 真实点位人数显示
+    if onsite_confirmed:
+        onsite_val_html = f'{onsite_display}人'
+        onsite_sub_html = '已确认'
+        onsite_color = '#34d399'
+    else:
+        onsite_val_html = '待确认'
+        onsite_sub_html = '暂同系统登记'
+        onsite_color = '#64748b'
+
     return f"""
-    <div class="tab-panel" id="tab_{tab_id}" data-station="{short}" data-orders="{orders}" data-registered="{registered or 0}" data-onsite="{onsite or 0}" data-ours="{1 if is_ours else 0}" data-canc-comp="{canc_comp or 0}" data-hours="{s_hours}" data-rate="{s_rate}">
+    <div class="tab-panel" id="tab_{tab_id}" data-station="{short}" data-orders="{orders}" data-registered="{registered or 0}" data-onsite="{onsite_calc or 0}" data-onsite-confirmed="{1 if onsite_confirmed else 0}" data-ours="{1 if is_ours else 0}" data-canc-comp="{canc_comp or 0}" data-hours="{s_hours}" data-rate="{s_rate}">
         <a href="javascript:switchTab('overview')" class="back-link">&larr; 返回总览</a>
         <div class="kpi-grid">
             {kpi_card('订单量', orders, f"完成率 {r['完成率']}%", '#818cf8')}
@@ -383,8 +396,8 @@ def build_station_tab(r, station_charts):
             </div>
             <div class="kpi-card">
                 <div class="kpi-title">真实点位人数</div>
-                <div class="kpi-value onsite-val" id="onsite_{tab_id}" style="color:#fbbf24">{onsite}人</div>
-                <div class="kpi-sub" id="onsite_sub_{tab_id}">暂同系统登记</div>
+                <div class="kpi-value onsite-val" id="onsite_{tab_id}" style="color:{onsite_color}">{onsite_val_html}</div>
+                <div class="kpi-sub" id="onsite_sub_{tab_id}">{onsite_sub_html}</div>
             </div>
             {kpi_card('归属人', r.get('归属人', '') or '—', '', '#e2e8f0')}
             <div class="kpi-card">
@@ -395,7 +408,7 @@ def build_station_tab(r, station_charts):
             <div class="kpi-card" id="subsidy_card_{tab_id}">
                 <div class="kpi-title">今日补贴</div>
                 <div class="kpi-value" id="subsidy_{tab_id}" style="color:{subsidy_color}">{subsidy_per_day}元</div>
-                <div class="kpi-sub" id="subsidy_formula_{tab_id}">{f'({onsite}-1)x80' if is_ours and onsite else 'N/A'}</div>
+                <div class="kpi-sub" id="subsidy_formula_{tab_id}">{f'({onsite_calc}-1)x80' if is_ours and onsite_calc else 'N/A'}</div>
             </div>
             {kpi_card('平均配送', f"{r['平均配送min']}min" if pd.notna(r['平均配送min']) else 'N/A', f"中位 {r['中位配送min']}min", '#fbbf24')}
             {kpi_card('超60min', r['超60min'], f"最长 {r['最长配送min']}min" if pd.notna(r['最长配送min']) else '', '#fb923c')}
@@ -404,15 +417,15 @@ def build_station_tab(r, station_charts):
 """ + (f"""
         <div class="profit-line" id="profit_line_{tab_id}">
             <span>结算 ¥{orders * 2.5:,.0f}</span>
-            <span>人力 -¥{onsite * s_hours * s_rate:,.0f}</span>
+            <span>人力 -¥{onsite_calc * s_hours * s_rate:,.0f}</span>
             <span>补贴 {'+¥' + str(subsidy_per_day) if subsidy_per_day > 0 else '0'}</span>
             <span>取消赔偿 -¥{int(canc_comp):,}</span>
-            <span class="profit-net-value" id="profit_net_{tab_id}" style="color:{'#34d399' if orders*2.5 + subsidy_per_day - onsite*s_hours*s_rate - MATERIAL_PER_STATION - canc_comp >= 0 else '#f87171'}">净利 ¥{orders*2.5 + subsidy_per_day - onsite*s_hours*s_rate - MATERIAL_PER_STATION - canc_comp:+,.0f}</span>
+            <span class="profit-net-value" id="profit_net_{tab_id}" style="color:{'#34d399' if orders*2.5 + subsidy_per_day - onsite_calc*s_hours*s_rate - MATERIAL_PER_STATION - canc_comp >= 0 else '#f87171'}">净利 ¥{orders*2.5 + subsidy_per_day - onsite_calc*s_hours*s_rate - MATERIAL_PER_STATION - canc_comp:+,.0f}</span>
         </div>
-""" if is_ours and onsite else '') + f"""
+""" if is_ours and onsite_calc else '') + f"""
         <div class="note-box" id="note_{tab_id}">
             <strong><span id="badge_{tab_id}">{badge}</span> {short}</strong> | <span id="status_{tab_id}">{status_note}</span>
-            {'| 补贴条件：人均>=20单 且 >=1人满3h | 公式：(真实人数-1)x80' if is_ours and onsite else ''}
+            {'| 补贴条件：人均>=20单 且 >=1人满3h | 公式：(真实人数-1)x80' if is_ours and onsite_calc else ''}
         </div>
 
         <div class="chart-grid">
@@ -532,14 +545,14 @@ def process_date(date_str):
             registered[s] = 0
             registered_detail[s] = set()
 
-        # 真实点位人数默认=系统登记人员，允许 ACTUAL_STAFF 覆盖
+        # 真实点位人数（仅当 ACTUAL_STAFF 明确配置时才取值，否则None=待确认）
         act_cfg = ACTUAL_STAFF_OVERRIDES.get(date_str, {})
         if s in act_cfg:
             onsite_staff[s] = act_cfg[s]
         elif s in ACTUAL_STAFF:
             onsite_staff[s] = ACTUAL_STAFF[s]
         else:
-            onsite_staff[s] = registered[s]
+            onsite_staff[s] = None  # 未确认，计算时回退到系统登记
 
     # 分类
     df['归属'] = df['站点名称'].apply(lambda s: '竞争方' if s in COMPETITORS else '我方')
@@ -566,7 +579,8 @@ def process_date(date_str):
         s_pickup = (sdf['物流单状态'] == '已取货').sum()
         grp = sdf['归属'].iloc[0]
         reg_count = registered.get(s)           # 系统登记人员
-        ons_count = onsite_staff.get(s, reg_count)  # 真实点位人数
+        ons_raw = onsite_staff.get(s)            # 真实点位人数（None=待确认）
+        ons_count = ons_raw if ons_raw is not None else reg_count  # 计算时回退到系统登记
         per_person = cnt / reg_count if reg_count else None  # 人均用系统登记算
 
         if reg_count and per_person:
@@ -594,6 +608,7 @@ def process_date(date_str):
             '完成率': round(s_done / cnt * 100, 1) if cnt else 0,
             '系统登记': reg_count,
             '真实人数': ons_count,
+            '真实人数已确认': ons_raw is not None,
             '人均单量': round(per_person, 1) if per_person else None,
             '距20单缺口': gap,
             '达标': 'Y' if meets else ('N' if reg_count else '?'),
@@ -738,7 +753,10 @@ def process_date(date_str):
         else:
             badge = '<span class="badge badge-gray">未知</span>'
         reg_s = f'{int(r["系统登记"])}人' if pd.notna(r['系统登记']) else '?'
-        ons_s = f'{int(r["真实人数"])}人' if pd.notna(r['真实人数']) else '?'
+        if r.get('真实人数已确认'):
+            ons_s = f'{int(r["真实人数"])}人'
+        else:
+            ons_s = '<span style="color:#64748b">待确认</span>'
         per_s = f'{r["人均单量"]}单/人' if pd.notna(r['人均单量']) else 'N/A'
         gap_s = r['缺口描述']
         gap_color = '#f87171' if (r['距20单缺口'] and r['距20单缺口'] > 0) else '#34d399'
@@ -1157,18 +1175,25 @@ function recalcUE(tabId, registered) {{
     var orders = parseInt(panel.dataset.orders);
     var perPerson = (orders / registered).toFixed(1);
     var meets = perPerson >= 20;
-    // 真实人数默认跟随系统登记（除非后续单独配置）
-    var onsite = registered;
+    // 真实人数：已确认则保持，否则回退到系统登记用于计算
+    var onsiteConfirmed = parseInt(panel.dataset.onsiteConfirmed) || 0;
+    var onsite = onsiteConfirmed ? parseInt(panel.dataset.onsite) : registered;
     var subsidy = meets ? (onsite - 1) * 80 : 0;
 
     // 更新真实点位人数显示
     var onsEl = document.getElementById('onsite_' + tabId);
     var onsSub = document.getElementById('onsite_sub_' + tabId);
     if (onsEl) {{
-        onsEl.textContent = onsite + '人';
+        if (onsiteConfirmed) {{
+            onsEl.textContent = onsite + '人';
+            onsEl.style.color = '#34d399';
+        }} else {{
+            onsEl.textContent = '待确认';
+            onsEl.style.color = '#64748b';
+        }}
     }}
     if (onsSub) {{
-        onsSub.textContent = '暂同系统登记';
+        onsSub.textContent = onsiteConfirmed ? '已确认' : '暂同系统登记';
     }}
 
     // 人均单量（用系统登记算）
@@ -1299,7 +1324,8 @@ function exportRegisteredConfig() {{
         cnt = r['订单量']
         grp = r['归属']
         reg_count = r['系统登记']
-        ons_count = r['真实人数']
+        ons_count = r['真实人数']  # already falls back to reg_count in station_rows
+        ons_confirmed = r.get('真实人数已确认', False)
         per_p = r['人均单量'] if pd.notna(r['人均单量']) else None
 
         if grp == '我方' and reg_count and cnt > 0:
@@ -1307,11 +1333,11 @@ function exportRegisteredConfig() {{
             revenue = settlement
             hours_per = r.get('工时', HOURS_PER_PERSON)
             rate = r.get('时薪', LABOR_RATE)
-            labor = ons_count * hours_per * rate    # 人力成本用真实人数
+            labor = ons_count * hours_per * rate    # 人力成本用真实人数(已回退)
             material = MATERIAL_PER_STATION
             canc_comp = r['取消赔偿']
             meets = per_p and per_p >= PER_PERSON_THRESHOLD
-            subsidy = (ons_count - 1) * SUBSIDY_PER_EXTRA if meets else 0  # 补贴用真实人数
+            subsidy = (ons_count - 1) * SUBSIDY_PER_EXTRA if meets else 0  # 补贴用真实人数(已回退)
             profit = revenue + subsidy - labor - material - canc_comp
 
             station_profits.append({
@@ -1320,6 +1346,7 @@ function exportRegisteredConfig() {{
                 '订单量': cnt,
                 '系统登记': reg_count,
                 '真实人数': ons_count,
+                '真实人数已确认': ons_confirmed,
                 '人均单量': per_p,
                 '已取消': r['已取消'],
                 '取消赔偿': round(canc_comp, 1),
@@ -1436,13 +1463,14 @@ def build_ue_page(date_display, total_orders, ours_count, station_profits,
         subsidy_str = f'+{sp["补贴"]:.0f}' if sp['补贴'] > 0 else '0'
         canc_str = f'{sp.get("已取消",0)}单' if sp.get('已取消', 0) > 0 else '0'
         comp_str = f'-¥{sp.get("取消赔偿",0):.0f}' if sp.get('取消赔偿', 0) > 0 else '0'
+        ons_display = f'{sp["真实人数"]}人' if sp.get('真实人数已确认') else '<span style="color:#64748b">待确认</span>'
         rows += f"""
                 <tr>
                   <td>{sp['站点']}</td>
                   <td>{sp['订单量']}</td>
                   <td>{canc_str}</td>
                   <td>{sp['系统登记']}人</td>
-                  <td>{sp['真实人数']}人</td>
+                  <td>{ons_display}</td>
                   <td>{sp['人均单量']}单/人</td>
                   <td>¥{sp['结算收入']:,.0f}</td>
                   <td>-¥{sp['人力成本']:,.0f}</td>
@@ -1725,7 +1753,9 @@ def update_index(dates_summary):
             if sn not in station_cum:
                 station_cum[sn] = {'orders': 0, 'done': 0, 'canc': 0, 'days': 0, 'profit': 0.0,
                                    'revenue': 0.0, 'subsidy': 0.0, 'labor': 0.0, 'canc_comp': 0.0,
-                                   'registered': sp.get('系统登记', 0), 'onsite': sp.get('真实人数', 0)}
+                                   'registered': sp.get('系统登记', 0),
+                                   'onsite': sp.get('真实人数', 0),
+                                   'onsite_confirmed': sp.get('真实人数已确认', False)}
             station_cum[sn]['orders'] += sp['订单量']
             station_cum[sn]['done'] += sp['订单量'] - sp.get('已取消', 0)
             station_cum[sn]['canc'] += sp.get('已取消', 0)
@@ -1750,7 +1780,7 @@ def update_index(dates_summary):
                 <td style="color:var(--text-dim)">{sc['days']}天</td>
                 <td style="color:var(--text-dim)">{avg_per_day:.0f}单/天</td>
                 <td style="color:#a78bfa">{sc['registered']}人</td>
-                <td style="color:#fbbf24">{sc['onsite']}人</td>
+                <td style="color:{('#34d399' if sc['onsite_confirmed'] else '#64748b')}">{f"{sc['onsite']}人" if sc['onsite_confirmed'] else '待确认'}</td>
                 <td style="color:var(--text-dim)">{sc['done']} / <span style="color:#f87171">{sc['canc']}</span></td>
                 <td style="color:#34d399">¥{sc['revenue']:,.0f}</td>
                 <td style="color:#f87171">-¥{sc['labor']:,.0f}</td>
