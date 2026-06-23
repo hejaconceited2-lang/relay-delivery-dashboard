@@ -47,7 +47,7 @@ STATION_OWNER = {
 
 # UE 参数（推广期）
 SETTLEMENT_PRICE = 2.5     # 结算价 元/单
-RIDER_FEE = 1.0            # 骑手费率 元/单 (向骑手收取)
+RIDER_FEE = 1.0            # 骑手费率 元/单 (骑手↔美团, 非我方收入)
 LABOR_RATE = 30            # 人力时薪 元/h
 HOURS_PER_PERSON = 3       # 人均日工时 h
 MATERIAL_PER_STATION = 100 / 30  # 物料摊销 元/天/站
@@ -223,11 +223,10 @@ def build_station_tab(r, station_charts):
 """ + (f"""
         <div class="profit-line" id="profit_line_{tab_id}">
             <span>结算 ¥{orders * 2.5:,.0f}</span>
-            <span>骑手费 ¥{orders * 1.0:,.0f}</span>
             <span>人力 -¥{staff * HOURS_PER_PERSON * LABOR_RATE:,.0f}</span>
             <span>补贴 {'+¥' + str(subsidy_per_day) if subsidy_per_day > 0 else '0'}</span>
             <span>取消赔偿 -¥{int(canc_comp):,}</span>
-            <span class="profit-net-value" id="profit_net_{tab_id}" style="color:{'#34d399' if orders*3.5 + subsidy_per_day - staff*HOURS_PER_PERSON*LABOR_RATE - MATERIAL_PER_STATION - canc_comp >= 0 else '#f87171'}">净利 ¥{orders*3.5 + subsidy_per_day - staff*HOURS_PER_PERSON*LABOR_RATE - MATERIAL_PER_STATION - canc_comp:+,.0f}</span>
+            <span class="profit-net-value" id="profit_net_{tab_id}" style="color:{'#34d399' if orders*2.5 + subsidy_per_day - staff*HOURS_PER_PERSON*LABOR_RATE - MATERIAL_PER_STATION - canc_comp >= 0 else '#f87171'}">净利 ¥{orders*2.5 + subsidy_per_day - staff*HOURS_PER_PERSON*LABOR_RATE - MATERIAL_PER_STATION - canc_comp:+,.0f}</span>
         </div>
 """ if is_ours and staff else '') + f"""
         <div class="note-box" id="note_{tab_id}">
@@ -963,23 +962,21 @@ function recalcUE(tabId, staff) {{
 
     // 盈利重算
     var settlement = orders * 2.5;
-    var rider = orders * 1.0;
     var labor = staff * 3 * 30;
     var material = 100/30;
     var cancComp = parseFloat(panel.dataset.cancComp) || 0;
     var lineSubsidy = meets ? (staff - 1) * 80 : 0;
-    var profit = settlement + rider + lineSubsidy - labor - material - cancComp;
+    var profit = settlement + lineSubsidy - labor - material - cancComp;
     var profitLine = document.getElementById('profit_line_' + tabId);
     if (profitLine) {{
         var spans = profitLine.querySelectorAll('span');
-        if (spans.length >= 6) {{
+        if (spans.length >= 5) {{
             spans[0].textContent = '结算 ¥' + settlement.toLocaleString('en', {{maximumFractionDigits:0}});
-            spans[1].textContent = '骑手费 ¥' + rider.toLocaleString('en', {{maximumFractionDigits:0}});
-            spans[2].textContent = '人力 -¥' + labor.toLocaleString('en', {{maximumFractionDigits:0}});
-            spans[3].textContent = '补贴 ' + (lineSubsidy > 0 ? '+¥' + lineSubsidy : '0');
-            spans[4].textContent = '取消赔偿 -¥' + cancComp.toLocaleString('en', {{maximumFractionDigits:0}});
-            spans[5].textContent = '净利 ¥' + (profit >= 0 ? '+' : '') + profit.toLocaleString('en', {{maximumFractionDigits:0}});
-            spans[5].style.color = profit >= 0 ? '#34d399' : '#f87171';
+            spans[1].textContent = '人力 -¥' + labor.toLocaleString('en', {{maximumFractionDigits:0}});
+            spans[2].textContent = '补贴 ' + (lineSubsidy > 0 ? '+¥' + lineSubsidy : '0');
+            spans[3].textContent = '取消赔偿 -¥' + cancComp.toLocaleString('en', {{maximumFractionDigits:0}});
+            spans[4].textContent = '净利 ¥' + (profit >= 0 ? '+' : '') + profit.toLocaleString('en', {{maximumFractionDigits:0}});
+            spans[4].style.color = profit >= 0 ? '#34d399' : '#f87171';
         }}
     }}
 
@@ -1055,8 +1052,7 @@ function exportStaffConfig() {{
         actual = r['实际人数']     # 实际人数，用于人工成本
         if grp == '我方' and paper and cnt > 0:
             settlement = cnt * SETTLEMENT_PRICE
-            rider_income = cnt * RIDER_FEE
-            revenue = settlement + rider_income
+            revenue = settlement
             hours_per = HOURS_OVERRIDES.get(date_str, {}).get(r['全名'],
                           STATION_HOURS.get(r['全名'], HOURS_PER_PERSON))
             labor = actual * hours_per * STATION_LABOR_RATE.get(r['全名'], LABOR_RATE)
@@ -1076,7 +1072,6 @@ function exportStaffConfig() {{
                 '已取消': r['已取消'],
                 '取消赔偿': round(canc_comp, 1),
                 '结算收入': round(settlement, 1),
-                '骑手费收入': round(rider_income, 1),
                 '人力成本': round(labor, 1),
                 '物料': round(material, 1),
                 '补贴': round(subsidy, 1),
@@ -1155,14 +1150,13 @@ def build_ue_page(date_display, total_orders, ours_count, station_profits,
     html_rank = dark_fig(fig_rank).to_html(full_html=False, include_plotlyjs=False, config=PLOTLY_CONFIG, div_id='chart_rank')
 
     # ── 收支结构图 ──
-    # 收入构成: 结算 vs 骑手费
+    # 收入构成: 结算
     fig_rev = go.Figure()
     rev_settlement = sum(sp['结算收入'] for sp in station_profits)
-    rev_rider = sum(sp['骑手费收入'] for sp in station_profits)
     fig_rev.add_trace(go.Pie(
-        labels=['结算收入', '骑手费收入'],
-        values=[rev_settlement, rev_rider],
-        marker_colors=['#818cf8', '#a78bfa'],
+        labels=['结算收入'],
+        values=[rev_settlement],
+        marker_colors=['#818cf8'],
         hole=0.5, textinfo='label+value',
         textfont=dict(color='#e2e8f0', size=11),
     ))
@@ -1198,7 +1192,6 @@ def build_ue_page(date_display, total_orders, ours_count, station_profits,
                   <td>{sp['编制']}人</td>
                   <td>{sp['人均单量']}单/人</td>
                   <td>¥{sp['结算收入']:,.0f}</td>
-                  <td>¥{sp['骑手费收入']:,.0f}</td>
                   <td>-¥{sp['人力成本']:,.0f}</td>
                   <td>-¥{sp['物料']:.0f}</td>
                   <td style="color:#f87171">{comp_str}</td>
@@ -1378,14 +1371,14 @@ tr:hover td {{ background:rgba(129,140,248,0.04); }}
 <div class="container">
 
     <div class="note-box">
-        <strong>UE 参数</strong> &nbsp;结算 {SETTLEMENT_PRICE}元/单 &nbsp;|&nbsp; 骑手费 {RIDER_FEE}元/单 &nbsp;|&nbsp; 人力 {LABOR_RATE}元/h×{HOURS_PER_PERSON}h &nbsp;|&nbsp; 物料 {MATERIAL_PER_STATION:.1f}元/天/站 &nbsp;|&nbsp; 补贴 (T-1)×{SUBSIDY_PER_EXTRA}元 &nbsp;|&nbsp; 门槛≥{PER_PERSON_THRESHOLD}单/人
+        <strong>UE 参数</strong> &nbsp;结算 {SETTLEMENT_PRICE}元/单 &nbsp;|&nbsp; 人力 {LABOR_RATE}元/h×{HOURS_PER_PERSON}h &nbsp;|&nbsp; 物料 {MATERIAL_PER_STATION:.1f}元/天/站 &nbsp;|&nbsp; 补贴 (T-1)×{SUBSIDY_PER_EXTRA}元 &nbsp;|&nbsp; 门槛≥{PER_PERSON_THRESHOLD}单/人
     </div>
 
     <div class="kpi-grid">
         <div class="kpi-card">
             <div class="kpi-title">总收入</div>
             <div class="kpi-value" style="color:#818cf8">¥{day_revenue:,.0f}</div>
-            <div class="kpi-sub">结算 + 骑手费</div>
+            <div class="kpi-sub">结算收入 2.5元/单</div>
         </div>
         <div class="kpi-card">
             <div class="kpi-title">总人力成本</div>
@@ -1438,7 +1431,7 @@ tr:hover td {{ background:rgba(129,140,248,0.04); }}
         <table>
             <thead><tr>
                 <th>站点</th><th>单量</th><th>取消</th><th>编制</th><th>人均</th>
-                <th>结算</th><th>骑手费</th><th>人力</th><th>物料</th><th>赔偿</th><th>补贴</th><th>净利</th>
+                <th>结算</th><th>人力</th><th>物料</th><th>赔偿</th><th>补贴</th><th>净利</th>
             </tr></thead>
             <tbody>{rows}</tbody>
         </table>
