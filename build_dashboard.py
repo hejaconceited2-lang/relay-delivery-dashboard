@@ -12,10 +12,10 @@ from datetime import datetime
 import sys, os, glob, json
 
 # ════════════════════════════════════════════════════════
-# 站点编制配置（仅作回退：当天无骑手数据时使用）
-# 编制优先从数据自动检测：经手骑手2~N 不重复人数
+# 系统登记人员回退配置（仅作回退：当天无骑手数据时使用）
+# 系统登记人员优先从数据自动检测：经手骑手2~N 不重复人数
 # ════════════════════════════════════════════════════════
-KNOWN_STAFF = {
+KNOWN_REGISTERED = {
     '分段履约广州绿地星玥': 4, '分段履约广州万菱广场': 2,
     '分段履约广州和业广场': 3, '分段履约广州金鹰大厦': 2,
     '分段履约广州华林国际C馆': 2, '分段履约广州中大附属第六医院': 6,
@@ -26,6 +26,13 @@ KNOWN_STAFF = {
     '分段履约广州汇德国际': 2,
     '分段履约广州云升科技园': 2,
 }
+
+# 真实点位人数（站点→实际人数，空=默认同系统登记人员）
+# 真实人数影响人力成本和补贴金额计算
+ACTUAL_STAFF = {}
+
+# 日期特定真实人数覆盖（优先级高于 ACTUAL_STAFF）
+ACTUAL_STAFF_OVERRIDES = {}
 
 # 竞争方站点
 COMPETITORS = {'分段履约广州新中国大厦', '分段履约广州新亚洲电子城', '分段履约广州孙逸仙北院'}
@@ -54,12 +61,12 @@ MATERIAL_PER_STATION = 100 / 30  # 物料摊销 元/天/站
 SUBSIDY_PER_EXTRA = 80     # 补贴 (T-1)x80 元/天
 PER_PERSON_THRESHOLD = 20  # 补贴门槛 人均单量
 
-# 日期特定编制覆盖（仅记录与基准不同的日期）
-# 格式: "YYYY-MM-DD" -> {站点: 编制}
-# 06-17: 中大附属第六医院尚未从2人扩到6人，万科欧泊3人
-STAFF_OVERRIDES = {
+# 日期特定系统登记人员覆盖（仅记录与基准不同的日期）
+# 格式: "YYYY-MM-DD" -> {站点: 人数}
+# 06-17: 中大附属第六医院尚未从2人扩到6人
+REGISTERED_OVERRIDES = {
     '2026-06-17': {
-        '分段履约广州中大附属第六医院': 2,  # 6.18才确认编制
+        '分段履约广州中大附属第六医院': 2,  # 6.18才确认登记人员
     },
 }
 
@@ -120,7 +127,7 @@ _station_histories_cache = None
 
 def get_station_histories():
     """扫描所有日期目录, 构建每个站点的逐日历史 DataFrame。
-    返回: {站点全名: DataFrame(columns=[date, orders, done, canc, staff, per, profit, canc_comp])}
+    返回: {站点全名: DataFrame(columns=[date, orders, done, canc, registered, per, profit, canc_comp])}
     """
     global _station_histories_cache
     if _station_histories_cache is not None:
@@ -162,15 +169,15 @@ def get_station_histories():
                 if col in df.columns:
                     for r in sdf[col].dropna():
                         riders.add(str(r).strip())
-            staff = len(riders) or 0
-            per = cnt / staff if staff > 0 else 0
-            meets = per >= PER_PERSON_THRESHOLD if staff > 0 else False
-            subsidy = (staff - 1) * SUBSIDY_PER_EXTRA if meets else 0
+            registered = len(riders) or 0
+            per = cnt / registered if registered > 0 else 0
+            meets = per >= PER_PERSON_THRESHOLD if registered > 0 else False
+            subsidy = (registered - 1) * SUBSIDY_PER_EXTRA if meets else 0
 
             hours_per = HOURS_OVERRIDES.get(year_date, {}).get(s,
                         STATION_HOURS.get(s, HOURS_PER_PERSON))
             rate = STATION_LABOR_RATE.get(s, LABOR_RATE)
-            labor = staff * hours_per * rate
+            labor = registered * hours_per * rate
             profit = cnt * SETTLEMENT_PRICE + subsidy - labor - MATERIAL_PER_STATION - canc_comp
 
             if s not in station_data:
@@ -179,8 +186,8 @@ def get_station_histories():
                 'date': date_display,
                 'date_full': year_date,
                 'orders': cnt, 'done': s_done, 'canc': s_canc,
-                'staff': staff if staff > 0 else None,
-                'per': round(per, 1) if staff > 0 else None,
+                'registered': registered if registered > 0 else None,
+                'per': round(per, 1) if registered > 0 else None,
                 'meets': meets,
                 'profit': round(profit, 1),
                 'canc_comp': round(canc_comp, 1),
@@ -198,7 +205,7 @@ def make_station_trend(station_name, history, color='#818cf8'):
     dates = [h['date'] for h in history]
     orders = [h['orders'] for h in history]
     profits = [h['profit'] for h in history]
-    staffs = [h['staff'] for h in history]
+    registered_counts = [h['registered'] for h in history]
     pers = [h['per'] for h in history]
 
     # 柱状图: 单量, 颜色按达标/未达标
@@ -210,8 +217,11 @@ def make_station_trend(station_name, history, color='#818cf8'):
         marker_color=bar_colors,
         text=orders, textposition='outside',
         textfont=dict(color='#e2e8f0', size=10),
-        hovertemplate='%{x}<br>%{y}单<br>人均%{customdata}单/人<extra></extra>',
-        customdata=[f'{p}' if p else '?' for p in pers],
+        hovertemplate='%{x}<br>%{y}单<br>系统登记%{customdata}人<br>人均%{customdata2}单/人<extra></extra>',
+        customdata=list(zip(
+            [f'{r}' if r else '?' for r in registered_counts],
+            [f'{p}' if p else '?' for p in pers],
+        )),
     ))
     fig.add_trace(go.Scatter(
         x=dates, y=profits, name='日净利',
@@ -328,7 +338,8 @@ def build_station_tab(r, station_charts):
     full_name = r['全名']
     is_ours = r['归属'] == '我方'
     charts = station_charts[full_name]
-    staff = int(r['编制']) if pd.notna(r['编制']) else None
+    registered = int(r['系统登记']) if pd.notna(r['系统登记']) else None
+    onsite = int(r['真实人数']) if pd.notna(r['真实人数']) else None
 
     if r['达标'] == 'Y':
         badge = '<span class="badge badge-green">达标</span>'
@@ -337,12 +348,12 @@ def build_station_tab(r, station_charts):
         badge = '<span class="badge badge-red">未达标</span>'
         status_note = f'人均{r["人均单量"]}单 (差{r["距20单缺口"]:.0f}单)'
     else:
-        badge = '<span class="badge badge-gray">编制未知</span>'
-        status_note = '编制数据缺失'
+        badge = '<span class="badge badge-gray">登记未知</span>'
+        status_note = '登记数据缺失'
 
-    if is_ours and staff:
+    if is_ours and onsite:
         meets_per = r['人均单量'] >= 20 if r['人均单量'] else False
-        subsidy_per_day = (staff - 1) * 80 if meets_per else 0
+        subsidy_per_day = (onsite - 1) * 80 if meets_per else 0
         subsidy_color = '#34d399' if subsidy_per_day > 0 else '#f87171'
     else:
         subsidy_per_day = 0
@@ -357,18 +368,23 @@ def build_station_tab(r, station_charts):
     canc_comp = r['取消赔偿']
     s_hours = r.get('工时', HOURS_PER_PERSON)
     s_rate = r.get('时薪', LABOR_RATE)
-    staff_editable = 'kpi-editable' if is_ours and staff else ''
+    registered_editable = 'kpi-editable' if is_ours and registered else ''
     return f"""
-    <div class="tab-panel" id="tab_{tab_id}" data-station="{short}" data-orders="{orders}" data-staff="{staff or 0}" data-ours="{1 if is_ours else 0}" data-canc-comp="{canc_comp or 0}" data-hours="{s_hours}" data-rate="{s_rate}">
+    <div class="tab-panel" id="tab_{tab_id}" data-station="{short}" data-orders="{orders}" data-registered="{registered or 0}" data-onsite="{onsite or 0}" data-ours="{1 if is_ours else 0}" data-canc-comp="{canc_comp or 0}" data-hours="{s_hours}" data-rate="{s_rate}">
         <a href="javascript:switchTab('overview')" class="back-link">&larr; 返回总览</a>
         <div class="kpi-grid">
             {kpi_card('订单量', orders, f"完成率 {r['完成率']}%", '#818cf8')}
             {kpi_card('已完成', r['已完成'], f"已取消 {r['已取消']}", '#34d399')}
             {pickup_html}
-            <div class="kpi-card {staff_editable}"{' onclick="editStaff(&quot;' + tab_id + '&quot;, this)"' if is_ours and staff else ''}>
-                <div class="kpi-title">编制 {'✎' if is_ours and staff else ''}</div>
-                <div class="kpi-value staff-val" style="color:#a78bfa">{staff}人</div>
-                <div class="kpi-sub"></div>
+            <div class="kpi-card {registered_editable}"{' onclick="editRegistered(&quot;' + tab_id + '&quot;, this)"' if is_ours and registered else ''}>
+                <div class="kpi-title">系统登记 {'✎' if is_ours and registered else ''}</div>
+                <div class="kpi-value registered-val" style="color:#a78bfa">{registered}人</div>
+                <div class="kpi-sub">经手骑手2~N去重</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-title">真实点位人数</div>
+                <div class="kpi-value onsite-val" id="onsite_{tab_id}" style="color:#fbbf24">{onsite}人</div>
+                <div class="kpi-sub" id="onsite_sub_{tab_id}">暂同系统登记</div>
             </div>
             {kpi_card('归属人', r.get('归属人', '') or '—', '', '#e2e8f0')}
             <div class="kpi-card">
@@ -379,7 +395,7 @@ def build_station_tab(r, station_charts):
             <div class="kpi-card" id="subsidy_card_{tab_id}">
                 <div class="kpi-title">今日补贴</div>
                 <div class="kpi-value" id="subsidy_{tab_id}" style="color:{subsidy_color}">{subsidy_per_day}元</div>
-                <div class="kpi-sub" id="subsidy_formula_{tab_id}">{f'({staff}-1)x80' if is_ours and staff else 'N/A'}</div>
+                <div class="kpi-sub" id="subsidy_formula_{tab_id}">{f'({onsite}-1)x80' if is_ours and onsite else 'N/A'}</div>
             </div>
             {kpi_card('平均配送', f"{r['平均配送min']}min" if pd.notna(r['平均配送min']) else 'N/A', f"中位 {r['中位配送min']}min", '#fbbf24')}
             {kpi_card('超60min', r['超60min'], f"最长 {r['最长配送min']}min" if pd.notna(r['最长配送min']) else '', '#fb923c')}
@@ -388,15 +404,15 @@ def build_station_tab(r, station_charts):
 """ + (f"""
         <div class="profit-line" id="profit_line_{tab_id}">
             <span>结算 ¥{orders * 2.5:,.0f}</span>
-            <span>人力 -¥{staff * s_hours * s_rate:,.0f}</span>
+            <span>人力 -¥{onsite * s_hours * s_rate:,.0f}</span>
             <span>补贴 {'+¥' + str(subsidy_per_day) if subsidy_per_day > 0 else '0'}</span>
             <span>取消赔偿 -¥{int(canc_comp):,}</span>
-            <span class="profit-net-value" id="profit_net_{tab_id}" style="color:{'#34d399' if orders*2.5 + subsidy_per_day - staff*s_hours*s_rate - MATERIAL_PER_STATION - canc_comp >= 0 else '#f87171'}">净利 ¥{orders*2.5 + subsidy_per_day - staff*s_hours*s_rate - MATERIAL_PER_STATION - canc_comp:+,.0f}</span>
+            <span class="profit-net-value" id="profit_net_{tab_id}" style="color:{'#34d399' if orders*2.5 + subsidy_per_day - onsite*s_hours*s_rate - MATERIAL_PER_STATION - canc_comp >= 0 else '#f87171'}">净利 ¥{orders*2.5 + subsidy_per_day - onsite*s_hours*s_rate - MATERIAL_PER_STATION - canc_comp:+,.0f}</span>
         </div>
-""" if is_ours and staff else '') + f"""
+""" if is_ours and onsite else '') + f"""
         <div class="note-box" id="note_{tab_id}">
             <strong><span id="badge_{tab_id}">{badge}</span> {short}</strong> | <span id="status_{tab_id}">{status_note}</span>
-            {'| 补贴条件：人均>=20单 且 >=1人满3h' if is_ours and staff else ''}
+            {'| 补贴条件：人均>=20单 且 >=1人满3h | 公式：(真实人数-1)x80' if is_ours and onsite else ''}
         </div>
 
         <div class="chart-grid">
@@ -475,16 +491,16 @@ def process_date(date_str):
         coverage_label = '非全天数据'
         coverage_color = '#fbbf24'
 
-    # 应用日期特定编制覆盖
-    staff = KNOWN_STAFF.copy()
-    if date_str in STAFF_OVERRIDES:
-        staff.update(STAFF_OVERRIDES[date_str])
+    # 应用日期特定系统登记人员覆盖
+    registered = KNOWN_REGISTERED.copy()
+    if date_str in REGISTERED_OVERRIDES:
+        registered.update(REGISTERED_OVERRIDES[date_str])
 
-    # ── 从经手骑手2~N 自动检测各站编制（二段及以后接力人员）──
-    # 编制 = 数据中实际出现的接力人员数（经手骑手2/3/4/5...）
-    # 一段（经手骑手1）是美团骑手，不参与我方编制
-    actual_staff = {}  # 站点 → 实际人数（与编制统一）
-    staff_detail = {}  # 站点 → 骑手名单
+    # ── 从经手骑手2~N 自动检测各站系统登记人员（二段及以后接力人员）──
+    # 系统登记人员 = 数据中实际出现的接力人员数（经手骑手2/3/4/5...）
+    # 一段（经手骑手1）是美团骑手，不参与我方计数
+    onsite_staff = {}  # 站点 → 真实点位人数（默认=系统登记人员）
+    registered_detail = {}  # 站点 → 系统登记骑手名单
     # 自动发现所有"经手骑手"列（排除经手骑手1 = 一段美团骑手）
     rider_cols = [c for c in df.columns
                   if c.startswith('经手骑手') and c != '经手骑手1']
@@ -493,7 +509,8 @@ def process_date(date_str):
 
     for s in df['站点名称'].unique():
         if s in COMPETITORS:
-            actual_staff[s] = staff.get(s, 0)
+            registered[s] = registered.get(s, 0)
+            onsite_staff[s] = registered[s]
             continue
         sdf = df[df['站点名称'] == s]
         riders = set()
@@ -502,23 +519,27 @@ def process_date(date_str):
                 for r in sdf[col].dropna():
                     riders.add(str(r).strip())
         detected = len(riders)
-        configured = staff.get(s)
+        configured = registered.get(s)
 
         if detected > 0:
-            # 用自动检测值作为编制
-            staff[s] = detected
-            actual_staff[s] = detected
-            staff_detail[s] = riders
+            # 用自动检测值作为系统登记人员
+            registered[s] = detected
+            registered_detail[s] = riders
             if configured and detected != configured:
                 names = '、'.join(sorted(riders))
-                print(f'  [编制更新] {s.replace("分段履约广州","")}: {configured}→{detected}人 — {names}')
-        elif configured:
-            # 无骑手数据时回退到配置值
-            actual_staff[s] = configured
-            staff_detail[s] = set()
+                print(f'  [登记更新] {s.replace("分段履约广州","")}: {configured}→{detected}人 — {names}')
+        elif not configured:
+            registered[s] = 0
+            registered_detail[s] = set()
+
+        # 真实点位人数默认=系统登记人员，允许 ACTUAL_STAFF 覆盖
+        act_cfg = ACTUAL_STAFF_OVERRIDES.get(date_str, {})
+        if s in act_cfg:
+            onsite_staff[s] = act_cfg[s]
+        elif s in ACTUAL_STAFF:
+            onsite_staff[s] = ACTUAL_STAFF[s]
         else:
-            actual_staff[s] = 0
-            staff_detail[s] = set()
+            onsite_staff[s] = registered[s]
 
     # 分类
     df['归属'] = df['站点名称'].apply(lambda s: '竞争方' if s in COMPETITORS else '我方')
@@ -544,18 +565,17 @@ def process_date(date_str):
         s_canc = (sdf['物流单状态'] == '已取消').sum()
         s_pickup = (sdf['物流单状态'] == '已取货').sum()
         grp = sdf['归属'].iloc[0]
-        stf_configured = staff.get(s)       # 编制人数（用于补贴门槛）
-        stf_actual = actual_staff.get(s, stf_configured)  # 实际人数（用于人工成本）
-        stf = stf_configured                # 默认用编制
-        per_person = cnt / stf_configured if stf_configured else None  # 人均用编制算
+        reg_count = registered.get(s)           # 系统登记人员
+        ons_count = onsite_staff.get(s, reg_count)  # 真实点位人数
+        per_person = cnt / reg_count if reg_count else None  # 人均用系统登记算
 
-        if stf and per_person:
+        if reg_count and per_person:
             gap = 20 - per_person
             meets = per_person >= 20
             gap_label = f'达标 (+{(-gap):.0f}单)' if meets else f'还差 {gap:.0f} 单'
         else:
             gap = None; meets = False
-            gap_label = '编制未知' if stf is None else '?'
+            gap_label = '登记未知' if reg_count is None else '?'
 
         s_times = sdf.loc[mask_done, '配送时长_min']
         # 取消赔偿: 已取消订单的实付金额合计
@@ -572,11 +592,11 @@ def process_date(date_str):
             '订单量': cnt, '已完成': s_done, '已取消': s_canc, '取消赔偿': canc_comp,
             '已取货': s_pickup,
             '完成率': round(s_done / cnt * 100, 1) if cnt else 0,
-            '编制': stf_configured,
-            '实际人数': stf_actual,
+            '系统登记': reg_count,
+            '真实人数': ons_count,
             '人均单量': round(per_person, 1) if per_person else None,
             '距20单缺口': gap,
-            '达标': 'Y' if meets else ('N' if stf else '?'),
+            '达标': 'Y' if meets else ('N' if reg_count else '?'),
             '缺口描述': gap_label,
             '归属人': owner,
             '工时': s_hours,
@@ -591,10 +611,10 @@ def process_date(date_str):
     st_ours = st[st['归属'] == '我方']
     st_comps = st[st['归属'] == '竞争方']
 
-    # rider_check 已在上方自动检测中完成（actual_staff / staff_detail）
+    # rider_check 已在上方自动检测中完成（onsite_staff / registered_detail）
 
     # ── 图表 ──
-    known = st_ours[st_ours['编制'].notna()].copy().sort_values('人均单量')
+    known = st_ours[st_ours['系统登记'].notna()].copy().sort_values('人均单量')
     fig_gap = go.Figure()
     fig_gap.add_trace(go.Bar(
         x=known['站点'], y=known['人均单量'],
@@ -717,7 +737,8 @@ def process_date(date_str):
             badge = '<span class="badge badge-red">未达标</span>'
         else:
             badge = '<span class="badge badge-gray">未知</span>'
-        staff_s = f'{int(r["编制"])}人' if pd.notna(r['编制']) else '?'
+        reg_s = f'{int(r["系统登记"])}人' if pd.notna(r['系统登记']) else '?'
+        ons_s = f'{int(r["真实人数"])}人' if pd.notna(r['真实人数']) else '?'
         per_s = f'{r["人均单量"]}单/人' if pd.notna(r['人均单量']) else 'N/A'
         gap_s = r['缺口描述']
         gap_color = '#f87171' if (r['距20单缺口'] and r['距20单缺口'] > 0) else '#34d399'
@@ -728,7 +749,8 @@ def process_date(date_str):
         <td><a href="javascript:switchTab('{r['站点'].replace(' ', '_')}')" style="color:#818cf8;cursor:pointer;text-decoration:underline">{r['站点']}</a></td>
         <td>{r['订单量']}</td>
         <td>{r['完成率']}%</td>
-        <td>{staff_s}</td>
+        <td>{reg_s}</td>
+        <td>{ons_s}</td>
         <td>{owner}</td>
         <td>{per_s}</td>
         <td><b style="color:{gap_color}">{gap_s}{pickup_s}</b></td>
@@ -747,7 +769,7 @@ def process_date(date_str):
         <div class="note-box" style="border-left-color:#fbbf24;background:rgba(251,191,36,0.08);margin-bottom:14px;">
             <strong>{pickup_note}</strong> — 时间窗口 {t_min.strftime('%H:%M')}-{t_max.strftime('%H:%M')}（截至拉取时），
             完成率等指标为当前快照值。
-            <button class="export-btn" id="exportStaffBtn" onclick="exportStaffConfig()" style="display:none;float:right;">导出编制配置</button>
+            <button class="export-btn" id="exportRegisteredBtn" onclick="exportRegisteredConfig()" style="display:none;float:right;">导出登记配置</button>
         </div>
 
         <div class="kpi-grid">
@@ -791,7 +813,7 @@ def process_date(date_str):
             <div style="max-height:450px;overflow:auto;">
             <table>
                 <thead><tr>
-                    <th>站点</th><th>订单量</th><th>完成率</th><th>编制</th><th>归属人</th>
+                    <th>站点</th><th>订单量</th><th>完成率</th><th>系统登记</th><th>真实人数</th><th>归属人</th>
                     <th>人均单量</th><th>距20单门槛</th><th>达标</th>
                     <th>平均配送</th><th>已取消</th><th>取消赔偿</th>
                 </tr></thead>
@@ -1115,29 +1137,41 @@ function switchTab(tabId) {{
     window.scrollTo({{top:0, behavior:'smooth'}});
 }}
 
-var staffChanges = {{}};  // {{tabId: newStaff}}
+var registeredChanges = {{}};  // {{tabId: newRegistered}}
 
-function editStaff(tabId, card) {{
-    var valEl = card.querySelector('.staff-val');
+function editRegistered(tabId, card) {{
+    var valEl = card.querySelector('.registered-val');
     var current = parseInt(valEl.textContent);
-    var input = prompt('修改编制 (当前 '+current+'人):', current);
+    var input = prompt('修改系统登记人数 (当前 '+current+'人):', current);
     if (input === null || input === '') return;
-    var newStaff = parseInt(input);
-    if (isNaN(newStaff) || newStaff < 1) return;
-    valEl.textContent = newStaff + '人';
-    staffChanges[tabId] = newStaff;
-    recalcUE(tabId, newStaff);
+    var newReg = parseInt(input);
+    if (isNaN(newReg) || newReg < 1) return;
+    valEl.textContent = newReg + '人';
+    registeredChanges[tabId] = newReg;
+    recalcUE(tabId, newReg);
     updateExportBtn();
 }}
 
-function recalcUE(tabId, staff) {{
+function recalcUE(tabId, registered) {{
     var panel = document.getElementById('tab_' + tabId);
     var orders = parseInt(panel.dataset.orders);
-    var perPerson = (orders / staff).toFixed(1);
+    var perPerson = (orders / registered).toFixed(1);
     var meets = perPerson >= 20;
-    var subsidy = meets ? (staff - 1) * 80 : 0;
+    // 真实人数默认跟随系统登记（除非后续单独配置）
+    var onsite = registered;
+    var subsidy = meets ? (onsite - 1) * 80 : 0;
 
-    // 人均单量
+    // 更新真实点位人数显示
+    var onsEl = document.getElementById('onsite_' + tabId);
+    var onsSub = document.getElementById('onsite_sub_' + tabId);
+    if (onsEl) {{
+        onsEl.textContent = onsite + '人';
+    }}
+    if (onsSub) {{
+        onsSub.textContent = '暂同系统登记';
+    }}
+
+    // 人均单量（用系统登记算）
     var perEl = document.getElementById('per_' + tabId);
     var perSub = document.getElementById('per_sub_' + tabId);
     if (perEl) {{
@@ -1149,14 +1183,14 @@ function recalcUE(tabId, staff) {{
         else perSub.textContent = '人均' + perPerson + '单 (差' + (20 - perPerson).toFixed(1) + '单)';
     }}
 
-    // 补贴
+    // 补贴（用真实人数算金额）
     var subEl = document.getElementById('subsidy_' + tabId);
     var subForm = document.getElementById('subsidy_formula_' + tabId);
     if (subEl) {{
         subEl.textContent = subsidy + '元';
         subEl.style.color = subsidy > 0 ? '#34d399' : '#f87171';
     }}
-    if (subForm) subForm.textContent = '(' + staff + '-1)x80';
+    if (subForm) subForm.textContent = '(' + onsite + '-1)x80';
 
     // 达标badge
     var badgeEl = document.getElementById('badge_' + tabId);
@@ -1177,14 +1211,14 @@ function recalcUE(tabId, staff) {{
         else statusEl.textContent = '人均' + perPerson + '单 (差' + (20 - perPerson).toFixed(1) + '单)';
     }}
 
-    // 盈利重算
+    // 盈利重算（人力成本用真实人数）
     var settlement = orders * 2.5;
     var hours = parseFloat(panel.dataset.hours) || 3;
     var rate = parseFloat(panel.dataset.rate) || 30;
-    var labor = staff * hours * rate;
+    var labor = onsite * hours * rate;
     var material = 100/30;
     var cancComp = parseFloat(panel.dataset.cancComp) || 0;
-    var lineSubsidy = meets ? (staff - 1) * 80 : 0;
+    var lineSubsidy = meets ? (onsite - 1) * 80 : 0;
     var profit = settlement + lineSubsidy - labor - material - cancComp;
     var profitLine = document.getElementById('profit_line_' + tabId);
     if (profitLine) {{
@@ -1200,42 +1234,42 @@ function recalcUE(tabId, staff) {{
     }}
 
     // 存储
-    localStorage.setItem('staff_overrides_' + window.location.pathname, JSON.stringify(staffChanges));
+    localStorage.setItem('registered_overrides_' + window.location.pathname, JSON.stringify(registeredChanges));
 }}
 
 function updateExportBtn() {{
-    var btn = document.getElementById('exportStaffBtn');
-    if (btn) btn.style.display = Object.keys(staffChanges).length ? 'inline-block' : 'none';
+    var btn = document.getElementById('exportRegisteredBtn');
+    if (btn) btn.style.display = Object.keys(registeredChanges).length ? 'inline-block' : 'none';
 }}
 
 // Load saved overrides on page load
 document.addEventListener('DOMContentLoaded', function() {{
-    var saved = localStorage.getItem('staff_overrides_' + window.location.pathname);
+    var saved = localStorage.getItem('registered_overrides_' + window.location.pathname);
     if (saved) {{
-        staffChanges = JSON.parse(saved);
-        Object.keys(staffChanges).forEach(function(tabId) {{
+        registeredChanges = JSON.parse(saved);
+        Object.keys(registeredChanges).forEach(function(tabId) {{
             var card = document.querySelector('#tab_' + tabId + ' .kpi-editable');
             if (card) {{
-                var newStaff = staffChanges[tabId];
-                card.querySelector('.staff-val').textContent = newStaff + '人';
-                recalcUE(tabId, newStaff);
+                var newReg = registeredChanges[tabId];
+                card.querySelector('.registered-val').textContent = newReg + '人';
+                recalcUE(tabId, newReg);
             }}
         }});
     }}
     updateExportBtn();
 }});
 
-function exportStaffConfig() {{
+function exportRegisteredConfig() {{
     var lines = [];
-    Object.keys(staffChanges).forEach(function(tabId) {{
+    Object.keys(registeredChanges).forEach(function(tabId) {{
         var panel = document.getElementById('tab_' + tabId);
         var station = panel.dataset.station;
-        lines.push("        '分段履约广州" + station + "': " + staffChanges[tabId] + ",");
+        lines.push("        '分段履约广州" + station + "': " + registeredChanges[tabId] + ",");
     }});
     if (!lines.length) {{ alert('暂无修改'); return; }}
     var code = "'" + document.title.split('|')[1].trim() + "': {{\\n" + lines.join('\\n') + "\\n    }},";
     navigator.clipboard.writeText(code).then(function() {{
-        alert('已复制到剪贴板:\\n\\n' + code + '\\n\\n粘贴到 build_dashboard.py 的 STAFF_OVERRIDES 中');
+        alert('已复制到剪贴板:\\n\\n' + code + '\\n\\n粘贴到 build_dashboard.py 的 REGISTERED_OVERRIDES 中');
     }});
 }}
 </script>
@@ -1264,29 +1298,28 @@ function exportStaffConfig() {{
     for _, r in st.iterrows():
         cnt = r['订单量']
         grp = r['归属']
-        stf = r['编制']
+        reg_count = r['系统登记']
+        ons_count = r['真实人数']
         per_p = r['人均单量'] if pd.notna(r['人均单量']) else None
 
-        paper = r['编制']         # 编制人数，用于补贴
-        actual = r['实际人数']     # 实际人数，用于人工成本
-        if grp == '我方' and paper and cnt > 0:
+        if grp == '我方' and reg_count and cnt > 0:
             settlement = cnt * SETTLEMENT_PRICE
             revenue = settlement
             hours_per = r.get('工时', HOURS_PER_PERSON)
             rate = r.get('时薪', LABOR_RATE)
-            labor = actual * hours_per * rate
+            labor = ons_count * hours_per * rate    # 人力成本用真实人数
             material = MATERIAL_PER_STATION
             canc_comp = r['取消赔偿']
             meets = per_p and per_p >= PER_PERSON_THRESHOLD
-            subsidy = (paper - 1) * SUBSIDY_PER_EXTRA if meets else 0  # 补贴用编制
+            subsidy = (ons_count - 1) * SUBSIDY_PER_EXTRA if meets else 0  # 补贴用真实人数
             profit = revenue + subsidy - labor - material - canc_comp
 
             station_profits.append({
                 '站点': r['站点'],
                 '归属': grp,
                 '订单量': cnt,
-                '编制': paper,
-                '实际人数': actual,
+                '系统登记': reg_count,
+                '真实人数': ons_count,
                 '人均单量': per_p,
                 '已取消': r['已取消'],
                 '取消赔偿': round(canc_comp, 1),
@@ -1408,7 +1441,8 @@ def build_ue_page(date_display, total_orders, ours_count, station_profits,
                   <td>{sp['站点']}</td>
                   <td>{sp['订单量']}</td>
                   <td>{canc_str}</td>
-                  <td>{sp['编制']}人</td>
+                  <td>{sp['系统登记']}人</td>
+                  <td>{sp['真实人数']}人</td>
                   <td>{sp['人均单量']}单/人</td>
                   <td>¥{sp['结算收入']:,.0f}</td>
                   <td>-¥{sp['人力成本']:,.0f}</td>
@@ -1649,7 +1683,7 @@ tr:hover td {{ background:rgba(129,140,248,0.04); }}
         <div style="max-height:500px;overflow:auto;">
         <table>
             <thead><tr>
-                <th>站点</th><th>单量</th><th>取消</th><th>编制</th><th>人均</th>
+                <th>站点</th><th>单量</th><th>取消</th><th>系统登记</th><th>真实人数</th><th>人均</th>
                 <th>结算</th><th>人力</th><th>物料</th><th>赔偿</th><th>补贴</th><th>净利</th>
             </tr></thead>
             <tbody>{rows}</tbody>
