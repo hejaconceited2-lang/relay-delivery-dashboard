@@ -1247,15 +1247,17 @@ function recalcUE(tabId, registered) {{
     var cancComp = parseFloat(panel.dataset.cancComp) || 0;
     var lineSubsidy = meets ? (onsite - 1) * 80 : 0;
     var profit = settlement + lineSubsidy - labor - material - cancComp;
+    // 未确认时加 * 标注
+    var asterisk = onsiteConfirmed ? '' : '<sup style="color:#64748b">*</sup>';
     var profitLine = document.getElementById('profit_line_' + tabId);
     if (profitLine) {{
         var spans = profitLine.querySelectorAll('span');
         if (spans.length >= 5) {{
-            spans[0].textContent = '结算 ¥' + settlement.toLocaleString('en', {{maximumFractionDigits:0}});
-            spans[1].textContent = '人力 -¥' + labor.toLocaleString('en', {{maximumFractionDigits:0}});
-            spans[2].textContent = '补贴 ' + (lineSubsidy > 0 ? '+¥' + lineSubsidy : '0');
-            spans[3].textContent = '取消赔偿 -¥' + cancComp.toLocaleString('en', {{maximumFractionDigits:0}});
-            spans[4].textContent = '净利 ¥' + (profit >= 0 ? '+' : '') + profit.toLocaleString('en', {{maximumFractionDigits:0}});
+            spans[0].innerHTML = '结算 ¥' + settlement.toLocaleString('en', {{maximumFractionDigits:0}});
+            spans[1].innerHTML = '人力 -¥' + labor.toLocaleString('en', {{maximumFractionDigits:0}}) + asterisk;
+            spans[2].innerHTML = '补贴 ' + (lineSubsidy > 0 ? '+¥' + lineSubsidy : '0') + asterisk;
+            spans[3].innerHTML = '取消赔偿 -¥' + cancComp.toLocaleString('en', {{maximumFractionDigits:0}});
+            spans[4].innerHTML = '净利 ¥' + (profit >= 0 ? '+' : '') + profit.toLocaleString('en', {{maximumFractionDigits:0}}) + asterisk;
             spans[4].style.color = profit >= 0 ? '#34d399' : '#f87171';
         }}
     }}
@@ -1390,6 +1392,7 @@ function exportRegisteredConfig() {{
         'day_subsidy': round(day_total_subsidy, 1),
         'day_labor': round(day_total_labor, 1),
         'day_canc_comp': round(day_total_canc_comp, 1),
+        'any_unconfirmed': any(not sp.get('真实人数已确认', False) for sp in station_profits),
     }
 
 
@@ -1894,13 +1897,15 @@ def update_index(dates_summary):
         # 盈利摘要行 → 链接到单日 UE 分析页
         profit_row = ''
         if d.get('day_profit') is not None:
+            day_unconfirmed = d.get('any_unconfirmed', False)
+            asterisk = '<sup style="color:#64748b">*</sup>' if day_unconfirmed else ''
             profit_row = f"""
         <a href="{mdd}_ue.html" class="profit-summary">
           <span>结算 ¥{d.get('day_revenue',0):,.0f}</span>
-          <span>人力 -¥{d.get('day_labor',0):,.0f}</span>
+          <span>人力 -¥{d.get('day_labor',0):,.0f}{asterisk}</span>
           <span>赔偿 -¥{d.get('day_canc_comp',0):,.0f}</span>
-          <span>补贴 +¥{d.get('day_subsidy',0):,.0f}</span>
-          <span class="profit-net" style="color:{profit_color}">日净利 {d['day_profit']:+,.0f}元</span>
+          <span>补贴 +¥{d.get('day_subsidy',0):,.0f}{asterisk}</span>
+          <span class="profit-net" style="color:{profit_color}">日净利 {d['day_profit']:+,.0f}元{asterisk}</span>
           <span class="profit-arrow">&rarr;</span>
         </a>"""
 
