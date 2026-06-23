@@ -123,7 +123,7 @@ def make_hourly_chart(sdf, title='分时订单量', color='#818cf8'):
     hourly = sdf.groupby('hour').size().sort_index()
     if hourly.empty:
         return '<p style="color:#64748b">无数据</p>'
-    hour_labels = [f'{h:02d}:00' for h in hourly.index]
+    hour_labels = [f'{h:02d}:00-{h+1:02d}:00' for h in hourly.index]
     fig = go.Figure()
     fig.add_trace(go.Bar(
         x=hour_labels, y=hourly.values,
@@ -162,7 +162,7 @@ def make_dual_timeline(sdf, title='到达→送达时间线', color_arrival='#38
         return '<p style="color:#64748b">无时间数据</p>'
 
     hours = sorted(set(int(h) for h in arrival.dropna().tolist() + delivery.dropna().tolist() if pd.notna(h)))
-    hour_labels = [f'{h:02d}:00' for h in hours]
+    hour_labels = [f'{h:02d}:00-{h+1:02d}:00' for h in hours]
 
     arr_counts = [int((arrival.astype(int) == h).sum()) for h in hours]
     del_counts = [int((delivery.astype(int) == h).sum()) for h in hours]
