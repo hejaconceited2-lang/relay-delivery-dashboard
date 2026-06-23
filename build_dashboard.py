@@ -191,9 +191,10 @@ def build_station_tab(r, station_charts):
 
     tab_id = short.replace(' ', '_')
     orders = r['订单量']
+    canc_comp = r['取消赔偿']
     staff_editable = 'kpi-editable' if is_ours and staff else ''
     return f"""
-    <div class="tab-panel" id="tab_{tab_id}" data-station="{short}" data-orders="{orders}" data-staff="{staff or 0}" data-ours="{1 if is_ours else 0}">
+    <div class="tab-panel" id="tab_{tab_id}" data-station="{short}" data-orders="{orders}" data-staff="{staff or 0}" data-ours="{1 if is_ours else 0}" data-canc-comp="{canc_comp or 0}">
         <a href="javascript:switchTab('overview')" class="back-link">&larr; 返回总览</a>
         <div class="kpi-grid">
             {kpi_card('订单量', orders, f"完成率 {r['完成率']}%", '#818cf8')}
@@ -225,7 +226,8 @@ def build_station_tab(r, station_charts):
             <span>骑手费 ¥{orders * 1.0:,.0f}</span>
             <span>人力 -¥{staff * HOURS_PER_PERSON * LABOR_RATE:,.0f}</span>
             <span>补贴 {'+¥' + str(subsidy_per_day) if subsidy_per_day > 0 else '0'}</span>
-            <span class="profit-net-value" id="profit_net_{tab_id}" style="color:{'#34d399' if subsidy_per_day + orders*3.5 - staff*HOURS_PER_PERSON*LABOR_RATE - MATERIAL_PER_STATION >= 0 else '#f87171'}">净利 ¥{orders*3.5 + subsidy_per_day - staff*HOURS_PER_PERSON*LABOR_RATE - MATERIAL_PER_STATION:+,.0f}</span>
+            <span>取消赔偿 -¥{int(canc_comp):,}</span>
+            <span class="profit-net-value" id="profit_net_{tab_id}" style="color:{'#34d399' if orders*3.5 + subsidy_per_day - staff*HOURS_PER_PERSON*LABOR_RATE - MATERIAL_PER_STATION - canc_comp >= 0 else '#f87171'}">净利 ¥{orders*3.5 + subsidy_per_day - staff*HOURS_PER_PERSON*LABOR_RATE - MATERIAL_PER_STATION - canc_comp:+,.0f}</span>
         </div>
 """ if is_ours and staff else '') + f"""
         <div class="note-box" id="note_{tab_id}">
@@ -527,6 +529,7 @@ def process_date(date_str):
         <td>{badge}</td>
         <td>{r['平均配送min']}min</td>
         <td>{r['已取消']}</td>
+        <td>¥{r['取消赔偿']:,.0f}</td>
     </tr>"""
 
     done_pct = done / total * 100 if total else 0
@@ -574,7 +577,7 @@ def process_date(date_str):
                 <thead><tr>
                     <th>站点</th><th>订单量</th><th>完成率</th><th>编制</th><th>归属人</th>
                     <th>人均单量</th><th>距20单门槛</th><th>达标</th>
-                    <th>平均配送</th><th>已取消</th>
+                    <th>平均配送</th><th>已取消</th><th>取消赔偿</th>
                 </tr></thead>
                 <tbody>{table_html}</tbody>
             </table>
@@ -963,18 +966,20 @@ function recalcUE(tabId, staff) {{
     var rider = orders * 1.0;
     var labor = staff * 3 * 30;
     var material = 100/30;
+    var cancComp = parseFloat(panel.dataset.cancComp) || 0;
     var lineSubsidy = meets ? (staff - 1) * 80 : 0;
-    var profit = settlement + rider + lineSubsidy - labor - material;
+    var profit = settlement + rider + lineSubsidy - labor - material - cancComp;
     var profitLine = document.getElementById('profit_line_' + tabId);
     if (profitLine) {{
         var spans = profitLine.querySelectorAll('span');
-        if (spans.length >= 5) {{
+        if (spans.length >= 6) {{
             spans[0].textContent = '结算 ¥' + settlement.toLocaleString('en', {{maximumFractionDigits:0}});
             spans[1].textContent = '骑手费 ¥' + rider.toLocaleString('en', {{maximumFractionDigits:0}});
             spans[2].textContent = '人力 -¥' + labor.toLocaleString('en', {{maximumFractionDigits:0}});
             spans[3].textContent = '补贴 ' + (lineSubsidy > 0 ? '+¥' + lineSubsidy : '0');
-            spans[4].textContent = '净利 ¥' + (profit >= 0 ? '+' : '') + profit.toLocaleString('en', {{maximumFractionDigits:0}});
-            spans[4].style.color = profit >= 0 ? '#34d399' : '#f87171';
+            spans[4].textContent = '取消赔偿 -¥' + cancComp.toLocaleString('en', {{maximumFractionDigits:0}});
+            spans[5].textContent = '净利 ¥' + (profit >= 0 ? '+' : '') + profit.toLocaleString('en', {{maximumFractionDigits:0}});
+            spans[5].style.color = profit >= 0 ? '#34d399' : '#f87171';
         }}
     }}
 
