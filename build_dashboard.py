@@ -417,15 +417,16 @@ def build_station_tab(r, station_charts):
 """ + (f"""
         <div class="profit-line" id="profit_line_{tab_id}">
             <span>结算 ¥{orders * 2.5:,.0f}</span>
-            <span>人力 -¥{onsite_calc * s_hours * s_rate:,.0f}</span>
-            <span>补贴 {'+¥' + str(subsidy_per_day) if subsidy_per_day > 0 else '0'}</span>
+            <span>人力 -¥{onsite_calc * s_hours * s_rate:,.0f}{'<sup style="color:#64748b">*</sup>' if not onsite_confirmed else ''}</span>
+            <span>补贴 {'+¥' + str(subsidy_per_day) if subsidy_per_day > 0 else '0'}{'<sup style="color:#64748b">*</sup>' if not onsite_confirmed else ''}</span>
             <span>取消赔偿 -¥{int(canc_comp):,}</span>
-            <span class="profit-net-value" id="profit_net_{tab_id}" style="color:{'#34d399' if orders*2.5 + subsidy_per_day - onsite_calc*s_hours*s_rate - MATERIAL_PER_STATION - canc_comp >= 0 else '#f87171'}">净利 ¥{orders*2.5 + subsidy_per_day - onsite_calc*s_hours*s_rate - MATERIAL_PER_STATION - canc_comp:+,.0f}</span>
+            <span class="profit-net-value" id="profit_net_{tab_id}" style="color:{'#34d399' if orders*2.5 + subsidy_per_day - onsite_calc*s_hours*s_rate - MATERIAL_PER_STATION - canc_comp >= 0 else '#f87171'}">净利 ¥{orders*2.5 + subsidy_per_day - onsite_calc*s_hours*s_rate - MATERIAL_PER_STATION - canc_comp:+,.0f}{'<sup style="color:#64748b">*</sup>' if not onsite_confirmed else ''}</span>
         </div>
 """ if is_ours and onsite_calc else '') + f"""
         <div class="note-box" id="note_{tab_id}">
             <strong><span id="badge_{tab_id}">{badge}</span> {short}</strong> | <span id="status_{tab_id}">{status_note}</span>
             {'| 补贴条件：人均>=20单 且 >=1人满3h | 公式：(真实人数-1)x80' if is_ours and onsite_calc else ''}
+            {('<br><span style="color:#64748b">* 人力/补贴/净利基于系统登记人数估算，真实点位人数待确认</span>' if not onsite_confirmed and is_ours else '') if is_ours and onsite_calc else ''}
         </div>
 
         <div class="chart-grid">
@@ -1366,10 +1367,13 @@ function exportRegisteredConfig() {{
 
     day_profit = round(day_total_revenue + day_total_subsidy - day_total_labor - day_total_material - day_total_canc_comp, 1)
 
+    # 检查是否有未确认真实人数的站点
+    any_unconfirmed = any(not sp.get('真实人数已确认', False) for sp in station_profits)
+
     # ── 生成单日 UE 分析页 ──
     build_ue_page(date_display, total, len(st_ours), station_profits,
                   day_profit, day_total_revenue, day_total_subsidy, day_total_labor,
-                  day_total_canc_comp, t_min, t_max)
+                  day_total_canc_comp, any_unconfirmed, t_min, t_max)
 
     # 返回摘要用于更新主页面
     return {
@@ -1391,7 +1395,7 @@ function exportRegisteredConfig() {{
 
 def build_ue_page(date_display, total_orders, ours_count, station_profits,
                   day_profit, day_revenue, day_subsidy, day_labor,
-                  day_canc_comp, t_min, t_max):
+                  day_canc_comp, any_unconfirmed, t_min, t_max):
     """生成单日 UE 盈利分析页面 MMDD_ue.html"""
     date_obj = datetime.strptime(date_display, '%Y-%m-%d')
     mdd = date_obj.strftime('%m%d')
@@ -1655,6 +1659,11 @@ tr:hover td {{ background:rgba(129,140,248,0.04); }}
     <div class="note-box">
         <strong>UE 参数</strong> &nbsp;结算 {SETTLEMENT_PRICE}元/单 &nbsp;|&nbsp; 人力 {LABOR_RATE}元/h×{HOURS_PER_PERSON}h &nbsp;|&nbsp; 物料 {MATERIAL_PER_STATION:.1f}元/天/站 &nbsp;|&nbsp; 补贴 (T-1)×{SUBSIDY_PER_EXTRA}元 &nbsp;|&nbsp; 门槛≥{PER_PERSON_THRESHOLD}单/人
     </div>
+""" + (f"""
+    <div class="note-box" style="border-left-color:#fbbf24;background:rgba(251,191,36,0.06);">
+        <strong style="color:#fbbf24">⚠ 人力成本待确认</strong> &nbsp;所有站点真实点位人数尚未确认，当前人力成本基于系统登记人数估算，净利仅供参考。
+    </div>
+""" if any_unconfirmed else '') + f"""
 
     <div class="kpi-grid">
         <div class="kpi-card">
@@ -1663,7 +1672,7 @@ tr:hover td {{ background:rgba(129,140,248,0.04); }}
             <div class="kpi-sub">结算收入 2.5元/单</div>
         </div>
         <div class="kpi-card">
-            <div class="kpi-title">总人力成本</div>
+            <div class="kpi-title">总人力成本{'<sup style="color:#64748b;font-size:10px">*</sup>' if any_unconfirmed else ''}</div>
             <div class="kpi-value" style="color:#f87171">-¥{day_labor:,.0f}</div>
             <div class="kpi-sub">{ours_count}站 × 人均{LABOR_RATE}元/h×{HOURS_PER_PERSON}h</div>
         </div>
@@ -1678,17 +1687,17 @@ tr:hover td {{ background:rgba(129,140,248,0.04); }}
             <div class="kpi-sub">已取消订单实付金额</div>
         </div>
         <div class="kpi-card">
-            <div class="kpi-title">总补贴</div>
+            <div class="kpi-title">总补贴{'<sup style="color:#64748b;font-size:10px">*</sup>' if any_unconfirmed else ''}</div>
             <div class="kpi-value" style="color:#fbbf24">+¥{day_subsidy:,.0f}</div>
             <div class="kpi-sub">(T-1)×{SUBSIDY_PER_EXTRA}元</div>
         </div>
         <div class="kpi-card">
-            <div class="kpi-title">日净利</div>
+            <div class="kpi-title">日净利{'<sup style="color:#64748b;font-size:10px">*</sup>' if any_unconfirmed else ''}</div>
             <div class="kpi-value" style="color:{profit_color}">¥{day_profit:+,.0f}</div>
             <div class="kpi-sub">利润率 {profit_rate:+.1f}%</div>
         </div>
         <div class="kpi-card">
-            <div class="kpi-title">单均净利</div>
+            <div class="kpi-title">单均净利{'<sup style="color:#64748b;font-size:10px">*</sup>' if any_unconfirmed else ''}</div>
             <div class="kpi-value" style="color:{profit_color}">¥{(day_profit/total_orders):+.2f}</div>
             <div class="kpi-sub">每单利润</div>
         </div>
@@ -1790,9 +1799,12 @@ def update_index(dates_summary):
                 <td style="color:{pc};font-weight:700">¥{sc['profit']:+,.0f}</td>
               </tr>"""
 
+    # Check if any station has unconfirmed headcount
+    any_cum_unconfirmed = any(not sc.get('onsite_confirmed', False) for _, sc in station_cum.items())
+
     cum_table_html = f"""
       <div class="section-chart" style="margin-bottom:20px;">
-        <h2>📊 站点累计汇总（{num_dates}天）</h2>
+        <h2>📊 站点累计汇总（{num_dates}天）{"<span style='color:#64748b;font-size:12px;font-weight:400'> — 人力/补贴/净利基于系统登记估算</span>" if any_cum_unconfirmed else ""}</h2>
         <div style="max-height:500px;overflow:auto;">
         <table>
           <thead><tr>
