@@ -153,6 +153,45 @@ def make_time_hist(sdf, title='配送时长分布', color='#818cf8'):
     return dark_fig(fig).to_html(full_html=False, include_plotlyjs=False, config=PLOTLY_CONFIG)
 
 
+def make_dual_timeline(sdf, title='到达→送达时间线', color_arrival='#38bdf8', color_delivery='#34d399'):
+    """到达点位(骑手1经手) vs 送达 分时对比"""
+    arrival = sdf.loc[sdf['骑手1经手_dt'].notna(), 'arrival_hour'].dropna()
+    delivery = sdf.loc[sdf['送达时间_dt'].notna(), 'delivery_hour'].dropna()
+
+    if len(arrival) == 0 and len(delivery) == 0:
+        return '<p style="color:#64748b">无时间数据</p>'
+
+    hours = sorted(set(int(h) for h in arrival.dropna().tolist() + delivery.dropna().tolist() if pd.notna(h)))
+    hour_labels = [f'{h:02d}:00' for h in hours]
+
+    arr_counts = [int((arrival.astype(int) == h).sum()) for h in hours]
+    del_counts = [int((delivery.astype(int) == h).sum()) for h in hours]
+
+    fig = go.Figure()
+    fig.add_trace(go.Bar(
+        x=hour_labels, y=arr_counts, name='到达点位',
+        marker_color=color_arrival,
+        text=[v if v > 0 else '' for v in arr_counts], textposition='outside',
+        textfont=dict(color='#bae6fd', size=10),
+        hovertemplate='到达 %{x}<br>%{y}单<extra></extra>'
+    ))
+    fig.add_trace(go.Bar(
+        x=hour_labels, y=del_counts, name='已送达',
+        marker_color=color_delivery,
+        text=[v if v > 0 else '' for v in del_counts], textposition='outside',
+        textfont=dict(color='#a7f3d0', size=10),
+        hovertemplate='送达 %{x}<br>%{y}单<extra></extra>'
+    ))
+    ymax = max(max(arr_counts) if arr_counts else 0, max(del_counts) if del_counts else 0)
+    fig.update_layout(
+        title=title, height=280, xaxis_tickangle=-45, yaxis_title=None,
+        yaxis_range=[0, ymax * 1.25],
+        legend=dict(orientation='h', yanchor='bottom', y=1.02, x=0),
+        barmode='group', bargap=0.2, bargroupgap=0.1,
+    )
+    return dark_fig(fig).to_html(full_html=False, include_plotlyjs=False, config=PLOTLY_CONFIG)
+
+
 def kpi_card(title, value, sub='', color='#818cf8'):
     return f"""<div class="kpi-card">
         <div class="kpi-title">{title}</div>
@@ -192,9 +231,11 @@ def build_station_tab(r, station_charts):
     tab_id = short.replace(' ', '_')
     orders = r['订单量']
     canc_comp = r['取消赔偿']
+    s_hours = r.get('工时', HOURS_PER_PERSON)
+    s_rate = r.get('时薪', LABOR_RATE)
     staff_editable = 'kpi-editable' if is_ours and staff else ''
     return f"""
-    <div class="tab-panel" id="tab_{tab_id}" data-station="{short}" data-orders="{orders}" data-staff="{staff or 0}" data-ours="{1 if is_ours else 0}" data-canc-comp="{canc_comp or 0}">
+    <div class="tab-panel" id="tab_{tab_id}" data-station="{short}" data-orders="{orders}" data-staff="{staff or 0}" data-ours="{1 if is_ours else 0}" data-canc-comp="{canc_comp or 0}" data-hours="{s_hours}" data-rate="{s_rate}">
         <a href="javascript:switchTab('overview')" class="back-link">&larr; 返回总览</a>
         <div class="kpi-grid">
             {kpi_card('订单量', orders, f"完成率 {r['完成率']}%", '#818cf8')}
@@ -223,10 +264,10 @@ def build_station_tab(r, station_charts):
 """ + (f"""
         <div class="profit-line" id="profit_line_{tab_id}">
             <span>结算 ¥{orders * 2.5:,.0f}</span>
-            <span>人力 -¥{staff * HOURS_PER_PERSON * LABOR_RATE:,.0f}</span>
+            <span>人力 -¥{staff * s_hours * s_rate:,.0f}</span>
             <span>补贴 {'+¥' + str(subsidy_per_day) if subsidy_per_day > 0 else '0'}</span>
             <span>取消赔偿 -¥{int(canc_comp):,}</span>
-            <span class="profit-net-value" id="profit_net_{tab_id}" style="color:{'#34d399' if orders*2.5 + subsidy_per_day - staff*HOURS_PER_PERSON*LABOR_RATE - MATERIAL_PER_STATION - canc_comp >= 0 else '#f87171'}">净利 ¥{orders*2.5 + subsidy_per_day - staff*HOURS_PER_PERSON*LABOR_RATE - MATERIAL_PER_STATION - canc_comp:+,.0f}</span>
+            <span class="profit-net-value" id="profit_net_{tab_id}" style="color:{'#34d399' if orders*2.5 + subsidy_per_day - staff*s_hours*s_rate - MATERIAL_PER_STATION - canc_comp >= 0 else '#f87171'}">净利 ¥{orders*2.5 + subsidy_per_day - staff*s_hours*s_rate - MATERIAL_PER_STATION - canc_comp:+,.0f}</span>
         </div>
 """ if is_ours and staff else '') + f"""
         <div class="note-box" id="note_{tab_id}">
@@ -237,6 +278,11 @@ def build_station_tab(r, station_charts):
         <div class="chart-grid">
             <div class="chart-box">{charts['hourly']}</div>
             <div class="chart-box">{charts['time']}</div>
+        </div>
+
+        <div class="section-chart" style="margin-top:16px;">
+            <h2>到达→送达时间线</h2>
+            {charts['timeline']}
         </div>
     </div>"""
 
@@ -274,10 +320,18 @@ def process_date(date_str):
     # 预处理
     df['下单时间_dt'] = pd.to_datetime(df['下单时间'], errors='coerce')
     df['送达时间_dt'] = pd.to_datetime(df['送达时间'], errors='coerce')
+    df['骑手1经手_dt'] = pd.to_datetime(df['骑手1经手时间'], errors='coerce')
     df['hour'] = df['下单时间_dt'].dt.hour
+    df['arrival_hour'] = df['骑手1经手_dt'].dt.hour.astype('Int64')  # 到达点位时段
+    df['delivery_hour'] = df['送达时间_dt'].dt.hour.astype('Int64')   # 送达时段
     mask_done = df['送达时间_dt'].notna()
     df.loc[mask_done, '配送时长_min'] = (
         df.loc[mask_done, '送达时间_dt'] - df.loc[mask_done, '下单时间_dt']
+    ).dt.total_seconds() / 60
+    # 接力配送时长: 到达→送达
+    mask_arrival = df['骑手1经手_dt'].notna() & mask_done
+    df.loc[mask_arrival, '接力时长_min'] = (
+        df.loc[mask_arrival, '送达时间_dt'] - df.loc[mask_arrival, '骑手1经手_dt']
     ).dt.total_seconds() / 60
 
     t_min = df['下单时间_dt'].min()
@@ -382,6 +436,10 @@ def process_date(date_str):
         canc_mask = sdf['物流单状态'] == '已取消'
         canc_comp = sdf.loc[canc_mask, '订单实付'].sum() if canc_mask.any() else 0
         owner = STATION_OWNER.get(s, '竞争方' if grp == '竞争方' else '')
+        # 站点级工时/时薪覆盖
+        s_hours = HOURS_OVERRIDES.get(date_str, {}).get(s,
+                  STATION_HOURS.get(s, HOURS_PER_PERSON))
+        s_rate = STATION_LABOR_RATE.get(s, LABOR_RATE)
         station_rows.append({
             '站点': s.replace('分段履约广州', ''),
             '全名': s, '归属': grp,
@@ -395,6 +453,8 @@ def process_date(date_str):
             '达标': 'Y' if meets else ('N' if stf else '?'),
             '缺口描述': gap_label,
             '归属人': owner,
+            '工时': s_hours,
+            '时薪': s_rate,
             '平均配送min': round(s_times.mean(), 1) if len(s_times) > 0 else None,
             '中位配送min': round(s_times.median(), 1) if len(s_times) > 0 else None,
             '超60min': int((s_times > 60).sum()),
@@ -476,6 +536,11 @@ def process_date(date_str):
     )
     html_time_all = dark_fig(fig_time_all).to_html(full_html=False, include_plotlyjs=False, config=PLOTLY_CONFIG, div_id='chart_time_all')
 
+    # 全站 到达→送达时间线
+    relay_median = df.loc[mask_arrival, '接力时长_min'].median()
+    relay_title = f'全站 到达→送达时间线（接力耗时中位{relay_median:.0f}min）' if pd.notna(relay_median) else '全站 到达→送达时间线'
+    html_dual_all = make_dual_timeline(df, relay_title)
+
     # Per-station charts
     station_charts = {}
     for _, row in st.iterrows():
@@ -483,9 +548,14 @@ def process_date(date_str):
         short = row['站点']
         sdf = df[df['站点名称'] == full_name]
         color = '#818cf8' if row['归属'] == '我方' else '#f87171'
+        s_median = sdf.loc[sdf['骑手1经手_dt'].notna() & sdf['送达时间_dt'].notna(), '接力时长_min'].median()
+        timeline_title = f'{short} · 到达→送达时间线'
+        if pd.notna(s_median):
+            timeline_title += f'（接力中位{s_median:.0f}min）'
         station_charts[full_name] = {
             'hourly': make_hourly_chart(sdf, f'{short} · 分时订单量', color),
             'time': make_time_hist(sdf, f'{short} · 配送时长分布', color),
+            'timeline': make_dual_timeline(sdf, timeline_title),
         }
 
     # ── Tab bar ──
@@ -566,6 +636,16 @@ def process_date(date_str):
             <div class="chart-grid">
                 <div class="chart-box">{html_hour_all}</div>
                 <div class="chart-box">{html_time_all}</div>
+            </div>
+        </div>
+
+        <div class="section-chart">
+            <h2>到达→送达时间线（骑手1经手 → 送达完成）</h2>
+            {html_dual_all}
+            <div class="note-box" style="border-left-color:#38bdf8;">
+                <strong>到达点位</strong> = 骑手1经手时间（美团骑手送达大堂）&nbsp;|&nbsp;
+                <strong>已送达</strong> = 送达时间（接力上楼完成）&nbsp;|&nbsp;
+                时段差反映接力配送耗时
             </div>
         </div>
 
@@ -962,7 +1042,9 @@ function recalcUE(tabId, staff) {{
 
     // 盈利重算
     var settlement = orders * 2.5;
-    var labor = staff * 3 * 30;
+    var hours = parseFloat(panel.dataset.hours) || 3;
+    var rate = parseFloat(panel.dataset.rate) || 30;
+    var labor = staff * hours * rate;
     var material = 100/30;
     var cancComp = parseFloat(panel.dataset.cancComp) || 0;
     var lineSubsidy = meets ? (staff - 1) * 80 : 0;
@@ -1053,9 +1135,9 @@ function exportStaffConfig() {{
         if grp == '我方' and paper and cnt > 0:
             settlement = cnt * SETTLEMENT_PRICE
             revenue = settlement
-            hours_per = HOURS_OVERRIDES.get(date_str, {}).get(r['全名'],
-                          STATION_HOURS.get(r['全名'], HOURS_PER_PERSON))
-            labor = actual * hours_per * STATION_LABOR_RATE.get(r['全名'], LABOR_RATE)
+            hours_per = r.get('工时', HOURS_PER_PERSON)
+            rate = r.get('时薪', LABOR_RATE)
+            labor = actual * hours_per * rate
             material = MATERIAL_PER_STATION
             canc_comp = r['取消赔偿']
             meets = per_p and per_p >= PER_PERSON_THRESHOLD
