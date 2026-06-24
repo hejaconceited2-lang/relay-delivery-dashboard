@@ -515,7 +515,7 @@ def build_station_tab(r, station_charts):
 
     if is_ours and onsite_calc:
         meets_per = r['人均单量'] >= 20 if r['人均单量'] else False
-        subsidy_per_day = (onsite_calc - 1) * 80 if meets_per else 0
+        subsidy_per_day = (registered - 1) * 80 if meets_per else 0  # 补贴始终用系统登记
         subsidy_color = '#34d399' if subsidy_per_day > 0 else '#f87171'
     else:
         subsidy_per_day = 0
@@ -545,12 +545,12 @@ def build_station_tab(r, station_charts):
             note_extras = ''
             if labor_source == 'payroll':
                 note_extras += '<br><span style="color:#34d399">✓ 人力成本来自实际计薪数据</span>'
-            note_extras += '| 补贴条件：人均>=20单 且 >=1人满3h | 公式：(真实人数-1)x80'
+            note_extras += '| 补贴条件：人均>=20单 | 公式：(系统登记-1)×80'
         else:
             labor_html = '<span style="color:#64748b">人力 —</span>'
             profit_html = f'<span class="profit-net-value" id="profit_net_{tab_id}" style="color:#64748b">净利 —</span>'
             note_extras = '<br><span style="color:#fbbf24">⚠ 缺少真实人力数据，净利待验证</span>'
-            note_extras += '| 补贴条件：人均>=20单 且 >=1人满3h | 公式：(T-1)x80 (T=系统登记)'
+            note_extras += '| 补贴条件：人均>=20单 | 公式：(系统登记-1)×80'
     else:
         labor_html = subsidy_html = profit_html = note_extras = ''
 
@@ -590,7 +590,7 @@ def build_station_tab(r, station_charts):
             <div class="kpi-card" id="subsidy_card_{tab_id}">
                 <div class="kpi-title">今日补贴</div>
                 <div class="kpi-value" id="subsidy_{tab_id}" style="color:{subsidy_color}">{subsidy_per_day}元</div>
-                <div class="kpi-sub" id="subsidy_formula_{tab_id}">{f'({onsite_calc}-1)x80' if is_ours and onsite_calc else 'N/A'}</div>
+                <div class="kpi-sub" id="subsidy_formula_{tab_id}">{f'({registered}-1)×80' if is_ours and registered else 'N/A'}</div>
             </div>
             {kpi_card('平均接力', f"{r['平均接力min']}min" if pd.notna(r['平均接力min']) else 'N/A', f"中位 {r['中位接力min']}min", '#34d399')}
             {kpi_card('接力超30min', r['接力超30min'], f"最长 {r['最长接力min']}min" if pd.notna(r['最长接力min']) else '', '#fb923c')}
@@ -1376,7 +1376,7 @@ function recalcUE(tabId, registered) {{
     // 真实人数：已确认则保持，否则回退到系统登记用于计算
     var onsiteConfirmed = parseInt(panel.dataset.onsiteConfirmed) || 0;
     var onsite = onsiteConfirmed ? parseInt(panel.dataset.onsite) : registered;
-    var subsidy = meets ? (onsite - 1) * 80 : 0;
+    var subsidy = meets ? (registered - 1) * 80 : 0;  // 补贴始终用系统登记
 
     // 更新真实点位人数显示
     var onsEl = document.getElementById('onsite_' + tabId);
@@ -1413,7 +1413,7 @@ function recalcUE(tabId, registered) {{
         subEl.textContent = subsidy + '元';
         subEl.style.color = subsidy > 0 ? '#34d399' : '#f87171';
     }}
-    if (subForm) subForm.textContent = '(' + onsite + '-1)x80';
+    if (subForm) subForm.textContent = '(' + registered + '-1)x80';
 
     // 达标badge
     var badgeEl = document.getElementById('badge_' + tabId);
@@ -1539,9 +1539,9 @@ function exportRegisteredConfig() {{
             settlement = cnt * SETTLEMENT_PRICE
             canc_comp = r['取消赔偿']
 
-            # 补贴始终基于系统登记计算（不依赖真实人力）
+            # 补贴始终基于系统登记计算
             meets = per_p and per_p >= PER_PERSON_THRESHOLD
-            subsidy = (ons_count - 1) * SUBSIDY_PER_EXTRA if meets else 0
+            subsidy = (reg_count - 1) * SUBSIDY_PER_EXTRA if meets else 0
 
             # 结算/补贴/赔偿始终计入（基于客观数据）
             day_total_revenue += settlement
