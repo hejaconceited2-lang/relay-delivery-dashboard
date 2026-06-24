@@ -1,0 +1,2 @@
+绿地星玥: registered=2, onsite=3(confirmed=1), labor=690(formula), ours=1
+万菱广场: registered=2, onsite=3(confirmed=0), labor=180(payroll), ours=1

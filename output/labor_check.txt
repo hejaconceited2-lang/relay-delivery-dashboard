@@ -1,0 +1,3 @@
+overview: orders=149, onsite=3(confirmed=1), labor=690(formula)
+和业广场: orders=37, onsite=2(confirmed=1), labor=180(payroll)
+珠江国际轻纺城: orders=30, onsite=3(confirmed=1), labor=270(formula)

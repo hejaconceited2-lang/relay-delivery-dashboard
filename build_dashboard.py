@@ -116,7 +116,7 @@ SETTLEMENT_PRICE = 2.5     # 结算价 元/单
 RIDER_FEE = 1.0            # 骑手费率 元/单 (骑手↔美团, 非我方收入)
 LABOR_RATE = 30            # 人力时薪 元/h
 HOURS_PER_PERSON = 3       # 人均日工时 h
-MATERIAL_PER_STATION = 100 / 30  # 物料摊销 元/天/站
+MATERIAL_PER_STATION = 0       # 物料摊销 元/天/站 (暂不计入, 待确认口径)
 SUBSIDY_PER_EXTRA = 80     # 补贴 (T-1)x80 元/天
 PER_PERSON_THRESHOLD = 20  # 补贴门槛 人均单量
 
@@ -1598,12 +1598,12 @@ def build_ue_page(date_display, total_orders, ours_count, station_profits,
                           margin=dict(t=45, b=10, l=10, r=10))
     html_rev = dark_fig(fig_rev).to_html(full_html=False, include_plotlyjs=False, config=PLOTLY_CONFIG, div_id='chart_rev')
 
-    # 成本构成: 人力 vs 物料 vs 取消赔偿
+    # 成本构成: 人力 vs 取消赔偿
     fig_cost = go.Figure()
     fig_cost.add_trace(go.Pie(
-        labels=['人力成本', '物料摊销', '取消赔偿'],
-        values=[day_labor, day_material, day_canc_comp],
-        marker_colors=['#f87171', '#fb923c', '#ef4444'],
+        labels=['人力成本', '取消赔偿'],
+        values=[day_labor, day_canc_comp],
+        marker_colors=['#f87171', '#ef4444'],
         hole=0.5, textinfo='label+value',
         textfont=dict(color='#e2e8f0', size=11),
     ))
@@ -1629,7 +1629,6 @@ def build_ue_page(date_display, total_orders, ours_count, station_profits,
                   <td>{sp['人均单量']}单/人</td>
                   <td>¥{sp['结算收入']:,.0f}</td>
                   <td>-¥{sp['人力成本']:,.0f}</td>
-                  <td>-¥{sp['物料']:.0f}</td>
                   <td style="color:#f87171">{comp_str}</td>
                   <td>{subsidy_str}</td>
                   <td style="color:{pc};font-weight:600">¥{sp['净利']:+,.0f}</td>
@@ -1807,7 +1806,7 @@ tr:hover td {{ background:rgba(129,140,248,0.04); }}
 <div class="container">
 
     <div class="note-box">
-        <strong>UE 参数</strong> &nbsp;结算 {SETTLEMENT_PRICE}元/单 &nbsp;|&nbsp; 人力 {LABOR_RATE}元/h×{HOURS_PER_PERSON}h &nbsp;|&nbsp; 物料 {MATERIAL_PER_STATION:.1f}元/天/站 &nbsp;|&nbsp; 补贴 (T-1)×{SUBSIDY_PER_EXTRA}元 &nbsp;|&nbsp; 门槛≥{PER_PERSON_THRESHOLD}单/人
+        <strong>UE 参数</strong> &nbsp;结算 {SETTLEMENT_PRICE}元/单 &nbsp;|&nbsp; 人力 {LABOR_RATE}元/h×{HOURS_PER_PERSON}h &nbsp;|&nbsp; 补贴 (T-1)×{SUBSIDY_PER_EXTRA}元 &nbsp;|&nbsp; 门槛≥{PER_PERSON_THRESHOLD}单/人
     </div>
 """ + (f"""
     <div class="note-box" style="border-left-color:#fbbf24;background:rgba(251,191,36,0.06);">
@@ -1825,11 +1824,6 @@ tr:hover td {{ background:rgba(129,140,248,0.04); }}
             <div class="kpi-title">总人力成本{'<sup style="color:#64748b;font-size:10px">*</sup>' if any_unconfirmed else ''}</div>
             <div class="kpi-value" style="color:#f87171">-¥{day_labor:,.0f}</div>
             <div class="kpi-sub">{ours_count}站 × 人均{LABOR_RATE}元/h×{HOURS_PER_PERSON}h</div>
-        </div>
-        <div class="kpi-card">
-            <div class="kpi-title">总物料</div>
-            <div class="kpi-value" style="color:#fb923c">-¥{day_material:,.0f}</div>
-            <div class="kpi-sub">{MATERIAL_PER_STATION:.1f}元 × {ours_count}站</div>
         </div>
         <div class="kpi-card">
             <div class="kpi-title">取消赔偿</div>
@@ -1872,7 +1866,7 @@ tr:hover td {{ background:rgba(129,140,248,0.04); }}
         <table>
             <thead><tr>
                 <th>站点</th><th>单量</th><th>取消</th><th>系统登记</th><th>真实人数</th><th>人均</th>
-                <th>结算</th><th>人力</th><th>物料</th><th>赔偿</th><th>补贴</th><th>净利</th>
+                <th>结算</th><th>人力</th><th>赔偿</th><th>补贴</th><th>净利</th>
             </tr></thead>
             <tbody>{rows}</tbody>
         </table>
@@ -2007,8 +2001,8 @@ def update_index(dates_summary):
         marker_color='#818cf8',
     ))
     fig_trend2.add_trace(go.Bar(
-        x=trend_dates, y=[-(l + d.get('day_canc_comp', 0) + d.get('stations', 0) * MATERIAL_PER_STATION) for l, d in zip(trend_labors, trend_data)],
-        name='成本(人力+物料+赔偿)',
+        x=trend_dates, y=[-(l + d.get('day_canc_comp', 0)) for l, d in zip(trend_labors, trend_data)],
+        name='成本(人力+赔偿)',
         marker_color='#f87171',
     ))
     fig_trend2.add_trace(go.Bar(
