@@ -503,22 +503,23 @@ def build_station_tab(r, station_charts):
     labor_source = r.get('人工来源', 'formula')
     registered_editable = 'kpi-editable' if is_ours and registered else ''
 
-    # 利润线HTML：未确认时显示占位符
-    if onsite_confirmed and is_ours and onsite_calc:
-        profit_val = orders*2.5 + subsidy_per_day - s_labor - MATERIAL_PER_STATION - canc_comp
-        profit_color = '#34d399' if profit_val >= 0 else '#f87171'
-        labor_html = f'<span>人力 -¥{s_labor:,.0f}</span>'
+    # 利润线HTML：未确认时仅隐藏依赖真实人力的项目
+    if is_ours and onsite_calc:
         subsidy_html = f'<span>补贴 {"+¥" + str(subsidy_per_day) if subsidy_per_day > 0 else "¥0"}</span>'
-        profit_html = f'<span class="profit-net-value" id="profit_net_{tab_id}" style="color:{profit_color}">净利 ¥{profit_val:+,.0f}</span>'
-        note_extras = ''
-        if labor_source == 'payroll':
-            note_extras += '<br><span style="color:#34d399">✓ 人力成本来自实际计薪数据</span>'
-        note_extras += '| 补贴条件：人均>=20单 且 >=1人满3h | 公式：(真实人数-1)x80'
-    elif is_ours and onsite_calc:
-        labor_html = '<span style="color:#64748b">人力 —</span>'
-        subsidy_html = '<span style="color:#64748b">补贴 —</span>'
-        profit_html = f'<span class="profit-net-value" id="profit_net_{tab_id}" style="color:#64748b">净利 —</span>'
-        note_extras = '<br><span style="color:#fbbf24">⚠ 缺少真实人力数据，营收统计待验证</span>'
+        if onsite_confirmed:
+            profit_val = orders*2.5 + subsidy_per_day - s_labor - MATERIAL_PER_STATION - canc_comp
+            profit_color = '#34d399' if profit_val >= 0 else '#f87171'
+            labor_html = f'<span>人力 -¥{s_labor:,.0f}</span>'
+            profit_html = f'<span class="profit-net-value" id="profit_net_{tab_id}" style="color:{profit_color}">净利 ¥{profit_val:+,.0f}</span>'
+            note_extras = ''
+            if labor_source == 'payroll':
+                note_extras += '<br><span style="color:#34d399">✓ 人力成本来自实际计薪数据</span>'
+            note_extras += '| 补贴条件：人均>=20单 且 >=1人满3h | 公式：(真实人数-1)x80'
+        else:
+            labor_html = '<span style="color:#64748b">人力 —</span>'
+            profit_html = f'<span class="profit-net-value" id="profit_net_{tab_id}" style="color:#64748b">净利 —</span>'
+            note_extras = '<br><span style="color:#fbbf24">⚠ 缺少真实人力数据，净利待验证</span>'
+            note_extras += '| 补贴条件：人均>=20单 且 >=1人满3h | 公式：(T-1)x80 (T=系统登记)'
     else:
         labor_html = subsidy_html = profit_html = note_extras = ''
 
@@ -1506,23 +1507,27 @@ function exportRegisteredConfig() {{
             settlement = cnt * SETTLEMENT_PRICE
             canc_comp = r['取消赔偿']
 
+            # 补贴始终基于系统登记计算（不依赖真实人力）
+            meets = per_p and per_p >= PER_PERSON_THRESHOLD
+            subsidy = (ons_count - 1) * SUBSIDY_PER_EXTRA if meets else 0
+
+            # 结算/补贴/赔偿始终计入（基于客观数据）
+            day_total_revenue += settlement
+            day_total_subsidy += subsidy
+            day_total_canc_comp += canc_comp
+
             if ons_confirmed:
                 day_confirmed_count += 1
                 labor = r['人工成本']
-                meets = per_p and per_p >= PER_PERSON_THRESHOLD
-                subsidy = (ons_count - 1) * SUBSIDY_PER_EXTRA if meets else 0
                 profit = settlement + subsidy - labor - MATERIAL_PER_STATION - canc_comp
                 labor_disp = round(labor, 1)
                 subsidy_disp = round(subsidy, 1)
                 profit_disp = round(profit, 1)
-                day_total_revenue += settlement
                 day_total_labor += labor
-                day_total_subsidy += subsidy
-                day_total_canc_comp += canc_comp
             else:
-                labor_disp = None
-                subsidy_disp = None
-                profit_disp = None
+                labor_disp = None      # 人力待确认
+                subsidy_disp = round(subsidy, 1)  # 补贴照常(基于系统登记)
+                profit_disp = None     # 净利待确认(缺人力成本)
 
             station_profits.append({
                 '站点': r['站点'],
@@ -1649,7 +1654,7 @@ def build_ue_page(date_display, total_orders, ours_count, station_profits,
         comp_str = f'-¥{sp.get("取消赔偿",0):.0f}' if sp.get('取消赔偿', 0) > 0 else '0'
         ons_display = f'{sp["真实人数"]}人' if sp.get('真实人数已确认') else '<span style="color:#64748b">待确认</span>'
         labor_str = f'-¥{sp["人力成本"]:,.0f}' if sp['人力成本'] is not None else '<span style="color:#64748b">—</span>'
-        sub_str = subsidy_str if sp['补贴'] is not None else '<span style="color:#64748b">—</span>'
+        sub_str = subsidy_str  # 补贴始终基于系统登记，不受真实人力影响
         profit_str = f'¥{sp["净利"]:+,.0f}' if sp['净利'] is not None else '<span style="color:#64748b">—</span>'
         rows += f"""
                 <tr>
@@ -1958,16 +1963,15 @@ def update_index(dates_summary):
     cum_rows = ''
     for sn, sc in cum_sorted:
         confirmed = sc['onsite_confirmed']
+        subsidy_str = f'+¥{sc["subsidy"]:,.0f}' if sc['subsidy'] > 0 else '¥0'  # 补贴始终基于系统登记
         if confirmed:
             pc = '#34d399' if sc['profit'] >= 0 else '#f87171'
             labor_str = f'-¥{sc["labor"]:,.0f}'
-            subsidy_str = f'+¥{sc["subsidy"]:,.0f}' if sc['subsidy'] > 0 else '¥0'
             profit_str = f'¥{sc["profit"]:+,.0f}'
             onsite_str = f'{sc["onsite"]}人'
         else:
             pc = '#64748b'
             labor_str = '<span style="color:#64748b">—</span>'
-            subsidy_str = '<span style="color:#64748b">—</span>'
             profit_str = '<span style="color:#64748b">—</span>'
             onsite_str = '<span style="color:#64748b">待确认</span>'
         avg_per_day = sc['orders'] / sc['days'] if sc['days'] > 0 else 0
