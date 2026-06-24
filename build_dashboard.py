@@ -696,13 +696,16 @@ def process_date(date_str):
             registered_detail[s] = set()
 
         # 真实点位人数（仅当 ACTUAL_STAFF 明确配置时才取值，否则None=待确认）
+        # 真实点位人数：仅当天有计薪数据或明确覆盖时才确认
         act_cfg = ACTUAL_STAFF_OVERRIDES.get(date_str, {})
+        payroll = DAILY_LABOR_COST.get(date_str, {})
         if s in act_cfg:
             onsite_staff[s] = act_cfg[s]
-        elif s in ACTUAL_STAFF:
-            onsite_staff[s] = ACTUAL_STAFF[s]
+        elif s in payroll:
+            # 有当天计薪数据 → 从 ACTUAL_STAFF 取人数(匹配计薪期)
+            onsite_staff[s] = ACTUAL_STAFF.get(s)
         else:
-            onsite_staff[s] = None  # 未确认，计算时回退到系统登记
+            onsite_staff[s] = None  # 当天无数据 → 待确认
 
     # 分类
     df['归属'] = df['站点名称'].apply(lambda s: '竞争方' if s in COMPETITORS else '我方')
