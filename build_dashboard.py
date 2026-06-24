@@ -4,6 +4,7 @@
   python build_dashboard.py 2026-06-18          # 构建指定日期
   python build_dashboard.py --all               # 重建所有日期
   python build_dashboard.py --update-index      # 仅更新总主页
+  python build_dashboard.py --fetch-payroll     # 从腾讯文档拉取最新计薪表
 """
 import pandas as pd
 import numpy as np
@@ -2464,6 +2465,11 @@ if __name__ == '__main__':
         print()
         update_index(summaries)
 
+    elif arg == '--fetch-payroll':
+        import subprocess
+        script = os.path.join(BASE_DIR, 'scripts', 'fetch_tencent_doc.py')
+        subprocess.run([sys.executable, script], check=True)
+
     elif arg == '--update-index':
         dates = discover_dates()
         summaries = []
@@ -2483,7 +2489,6 @@ if __name__ == '__main__':
         try:
             summary = process_date(date_str)
             summaries = [summary]
-            # 同时收集其他日期摘要以更新主页面
             for d in discover_dates():
                 if d == date_str:
                     continue
