@@ -1954,7 +1954,19 @@ def update_index(dates_summary):
 
     cum_rows = ''
     for sn, sc in cum_sorted:
-        pc = '#34d399' if sc['profit'] >= 0 else '#f87171'
+        confirmed = sc['onsite_confirmed']
+        if confirmed:
+            pc = '#34d399' if sc['profit'] >= 0 else '#f87171'
+            labor_str = f'-¥{sc["labor"]:,.0f}'
+            subsidy_str = f'+¥{sc["subsidy"]:,.0f}' if sc['subsidy'] > 0 else '¥0'
+            profit_str = f'¥{sc["profit"]:+,.0f}'
+            onsite_str = f'{sc["onsite"]}人'
+        else:
+            pc = '#64748b'
+            labor_str = '<span style="color:#64748b">—</span>'
+            subsidy_str = '<span style="color:#64748b">—</span>'
+            profit_str = '<span style="color:#64748b">—</span>'
+            onsite_str = '<span style="color:#64748b">待确认</span>'
         avg_per_day = sc['orders'] / sc['days'] if sc['days'] > 0 else 0
         cum_rows += f"""
               <tr>
@@ -1963,13 +1975,13 @@ def update_index(dates_summary):
                 <td style="color:var(--text-dim)">{sc['days']}天</td>
                 <td style="color:var(--text-dim)">{avg_per_day:.0f}单/天</td>
                 <td style="color:#a78bfa">{sc['registered']}人</td>
-                <td style="color:{('#34d399' if sc['onsite_confirmed'] else '#64748b')}">{f"{sc['onsite']}人" if sc['onsite_confirmed'] else '待确认'}</td>
+                <td style="color:{('#34d399' if confirmed else '#64748b')}">{onsite_str}</td>
                 <td style="color:var(--text-dim)">{sc['done']} / <span style="color:#f87171">{sc['canc']}</span></td>
                 <td style="color:#34d399">¥{sc['revenue']:,.0f}</td>
-                <td style="color:#f87171">-¥{sc['labor']:,.0f}</td>
-                <td style="color:#fbbf24">{'+¥'+format(sc['subsidy'],',.0f') if sc['subsidy'] > 0 else '¥0'}</td>
+                <td style="color:{('#f87171' if confirmed else '#64748b')}">{labor_str}</td>
+                <td style="color:{('#fbbf24' if confirmed else '#64748b')}">{subsidy_str}</td>
                 <td style="color:#f87171">{'-¥'+format(sc['canc_comp'],',.0f') if sc['canc_comp'] > 0 else '¥0'}</td>
-                <td style="color:{pc};font-weight:700">¥{sc['profit']:+,.0f}</td>
+                <td style="color:{pc};font-weight:700">{profit_str}</td>
               </tr>"""
 
     # Check if any station has unconfirmed headcount
