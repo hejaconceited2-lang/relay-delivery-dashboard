@@ -503,6 +503,25 @@ def build_station_tab(r, station_charts):
     labor_source = r.get('人工来源', 'formula')
     registered_editable = 'kpi-editable' if is_ours and registered else ''
 
+    # 利润线HTML：未确认时显示占位符
+    if onsite_confirmed and is_ours and onsite_calc:
+        profit_val = orders*2.5 + subsidy_per_day - s_labor - MATERIAL_PER_STATION - canc_comp
+        profit_color = '#34d399' if profit_val >= 0 else '#f87171'
+        labor_html = f'<span>人力 -¥{s_labor:,.0f}</span>'
+        subsidy_html = f'<span>补贴 {"+¥" + str(subsidy_per_day) if subsidy_per_day > 0 else "¥0"}</span>'
+        profit_html = f'<span class="profit-net-value" id="profit_net_{tab_id}" style="color:{profit_color}">净利 ¥{profit_val:+,.0f}</span>'
+        note_extras = ''
+        if labor_source == 'payroll':
+            note_extras += '<br><span style="color:#34d399">✓ 人力成本来自实际计薪数据</span>'
+        note_extras += '| 补贴条件：人均>=20单 且 >=1人满3h | 公式：(真实人数-1)x80'
+    elif is_ours and onsite_calc:
+        labor_html = '<span style="color:#64748b">人力 —</span>'
+        subsidy_html = '<span style="color:#64748b">补贴 —</span>'
+        profit_html = f'<span class="profit-net-value" id="profit_net_{tab_id}" style="color:#64748b">净利 —</span>'
+        note_extras = '<br><span style="color:#fbbf24">⚠ 缺少真实人力数据，营收统计待验证</span>'
+    else:
+        labor_html = subsidy_html = profit_html = note_extras = ''
+
     # 真实点位人数显示
     if onsite_confirmed:
         onsite_val_html = f'{onsite_display}人'
@@ -548,17 +567,15 @@ def build_station_tab(r, station_charts):
 """ + (f"""
         <div class="profit-line" id="profit_line_{tab_id}">
             <span>结算 ¥{orders * 2.5:,.0f}</span>
-            <span>人力 -¥{s_labor:,.0f}{'<sup style="color:#64748b">*</sup>' if not onsite_confirmed else ''}</span>
-            <span>补贴 {'+¥' + str(subsidy_per_day) if subsidy_per_day > 0 else '0'}{'<sup style="color:#64748b">*</sup>' if not onsite_confirmed else ''}</span>
+            {labor_html}
+            {subsidy_html}
             <span>取消赔偿 -¥{int(canc_comp):,}</span>
-            <span class="profit-net-value" id="profit_net_{tab_id}" style="color:{'#34d399' if orders*2.5 + subsidy_per_day - s_labor - MATERIAL_PER_STATION - canc_comp >= 0 else '#f87171'}">净利 ¥{orders*2.5 + subsidy_per_day - s_labor - MATERIAL_PER_STATION - canc_comp:+,.0f}{'<sup style="color:#64748b">*</sup>' if not onsite_confirmed else ''}</span>
+            {profit_html}
         </div>
 """ if is_ours and onsite_calc else '') + f"""
         <div class="note-box" id="note_{tab_id}">
             <strong><span id="badge_{tab_id}">{badge}</span> {short}</strong> | <span id="status_{tab_id}">{status_note}</span>
-            {'| 补贴条件：人均>=20单 且 >=1人满3h | 公式：(真实人数-1)x80' if is_ours and onsite_calc else ''}
-            {('<br><span style="color:#64748b">* 人力/补贴/净利基于系统登记人数估算，真实点位人数待确认</span>' if not onsite_confirmed and is_ours else '') if is_ours and onsite_calc else ''}
-            {('<br><span style="color:#34d399">✓ 人力成本来自实际计薪数据</span>' if labor_source == 'payroll' and is_ours else '') if is_ours and onsite_calc else ''}
+            {note_extras}
         </div>
 
         <div class="chart-grid">
@@ -1473,23 +1490,36 @@ function exportRegisteredConfig() {{
     day_total_material = 0
     day_total_subsidy = 0
     day_total_canc_comp = 0
+    day_confirmed_count = 0  # 有确认数据的站点数
     for _, r in st.iterrows():
         cnt = r['订单量']
         grp = r['归属']
         reg_count = r['系统登记']
-        ons_count = r['真实人数']  # already falls back to reg_count in station_rows
+        ons_count = r['真实人数']
         ons_confirmed = r.get('真实人数已确认', False)
         per_p = r['人均单量'] if pd.notna(r['人均单量']) else None
 
         if grp == '我方' and reg_count and cnt > 0:
             settlement = cnt * SETTLEMENT_PRICE
-            revenue = settlement
-            labor = r['人工成本']  # 已在station_rows中优选DAILY_LABOR_COST
-            material = MATERIAL_PER_STATION
             canc_comp = r['取消赔偿']
-            meets = per_p and per_p >= PER_PERSON_THRESHOLD
-            subsidy = (ons_count - 1) * SUBSIDY_PER_EXTRA if meets else 0  # 补贴用真实人数(已回退)
-            profit = revenue + subsidy - labor - material - canc_comp
+
+            if ons_confirmed:
+                day_confirmed_count += 1
+                labor = r['人工成本']
+                meets = per_p and per_p >= PER_PERSON_THRESHOLD
+                subsidy = (ons_count - 1) * SUBSIDY_PER_EXTRA if meets else 0
+                profit = settlement + subsidy - labor - MATERIAL_PER_STATION - canc_comp
+                labor_disp = round(labor, 1)
+                subsidy_disp = round(subsidy, 1)
+                profit_disp = round(profit, 1)
+                day_total_revenue += settlement
+                day_total_labor += labor
+                day_total_subsidy += subsidy
+                day_total_canc_comp += canc_comp
+            else:
+                labor_disp = None
+                subsidy_disp = None
+                profit_disp = None
 
             station_profits.append({
                 '站点': r['站点'],
@@ -1502,19 +1532,14 @@ function exportRegisteredConfig() {{
                 '已取消': r['已取消'],
                 '取消赔偿': round(canc_comp, 1),
                 '结算收入': round(settlement, 1),
-                '人力成本': round(labor, 1),
-                '物料': round(material, 1),
-                '补贴': round(subsidy, 1),
-                '净利': round(profit, 1),
+                '人力成本': labor_disp,
+                '物料': round(MATERIAL_PER_STATION, 1),
+                '补贴': subsidy_disp,
+                '净利': profit_disp,
                 '达标': r['达标'],
             })
-            day_total_revenue += revenue
-            day_total_labor += labor
-            day_total_material += material
-            day_total_subsidy += subsidy
-            day_total_canc_comp += canc_comp
 
-    day_profit = round(day_total_revenue + day_total_subsidy - day_total_labor - day_total_material - day_total_canc_comp, 1)
+    day_profit = round(day_total_revenue + day_total_subsidy - day_total_labor - day_total_material - day_total_canc_comp, 1) if day_confirmed_count > 0 else None
 
     # 检查是否有未确认真实人数的站点
     any_unconfirmed = any(not sp.get('真实人数已确认', False) for sp in station_profits)
@@ -1554,14 +1579,15 @@ def build_ue_page(date_display, total_orders, ours_count, station_profits,
     date_dir = os.path.join(BASE_DIR, date_short)
     ue_dir_path = os.path.join(date_dir, 'ue_analysis.html')
 
-    profit_color = '#34d399' if day_profit >= 0 else '#f87171'
+    profit_color = '#34d399' if (day_profit or 0) >= 0 else '#f87171'
     day_material = ours_count * MATERIAL_PER_STATION
 
     # ── KPI 卡片 ──
-    profit_rate = (day_profit / day_revenue * 100) if day_revenue > 0 else 0
+    profit_rate = (day_profit / day_revenue * 100) if day_revenue > 0 and day_profit is not None else None
 
     # ── 站点净利排名图 ──
-    sp_sorted = sorted(station_profits, key=lambda x: x['净利'])
+    sp_confirmed = [sp for sp in station_profits if sp['净利'] is not None]
+    sp_sorted = sorted(sp_confirmed, key=lambda x: x['净利']) if sp_confirmed else []
     fig_rank = go.Figure()
     fig_rank.add_trace(go.Bar(
         y=[sp['站点'] for sp in sp_sorted],
@@ -1613,12 +1639,15 @@ def build_ue_page(date_display, total_orders, ours_count, station_profits,
 
     # ── 站点明细表 ──
     rows = ''
-    for sp in sorted(station_profits, key=lambda x: x['净利'], reverse=True):
-        pc = '#34d399' if sp['净利'] >= 0 else '#f87171'
-        subsidy_str = f'+{sp["补贴"]:.0f}' if sp['补贴'] > 0 else '0'
+    for sp in sorted(station_profits, key=lambda x: (x['净利'] is not None, x['净利'] or 0), reverse=True):
+        pc = '#34d399' if (sp['净利'] or 0) >= 0 else '#f87171'
+        subsidy_str = f'+{sp["补贴"]:.0f}' if (sp['补贴'] or 0) > 0 else '0'
         canc_str = f'{sp.get("已取消",0)}单' if sp.get('已取消', 0) > 0 else '0'
         comp_str = f'-¥{sp.get("取消赔偿",0):.0f}' if sp.get('取消赔偿', 0) > 0 else '0'
         ons_display = f'{sp["真实人数"]}人' if sp.get('真实人数已确认') else '<span style="color:#64748b">待确认</span>'
+        labor_str = f'-¥{sp["人力成本"]:,.0f}' if sp['人力成本'] is not None else '<span style="color:#64748b">—</span>'
+        sub_str = subsidy_str if sp['补贴'] is not None else '<span style="color:#64748b">—</span>'
+        profit_str = f'¥{sp["净利"]:+,.0f}' if sp['净利'] is not None else '<span style="color:#64748b">—</span>'
         rows += f"""
                 <tr>
                   <td>{sp['站点']}</td>
@@ -1628,10 +1657,10 @@ def build_ue_page(date_display, total_orders, ours_count, station_profits,
                   <td>{ons_display}</td>
                   <td>{sp['人均单量']}单/人</td>
                   <td>¥{sp['结算收入']:,.0f}</td>
-                  <td>-¥{sp['人力成本']:,.0f}</td>
+                  <td>{labor_str}</td>
                   <td style="color:#f87171">{comp_str}</td>
-                  <td>{subsidy_str}</td>
-                  <td style="color:{pc};font-weight:600">¥{sp['净利']:+,.0f}</td>
+                  <td>{sub_str}</td>
+                  <td style="color:{pc};font-weight:600">{profit_str}</td>
                 </tr>"""
 
     # ── 完整 HTML ──
@@ -1837,12 +1866,12 @@ tr:hover td {{ background:rgba(129,140,248,0.04); }}
         </div>
         <div class="kpi-card">
             <div class="kpi-title">日净利{'<sup style="color:#64748b;font-size:10px">*</sup>' if any_unconfirmed else ''}</div>
-            <div class="kpi-value" style="color:{profit_color}">¥{day_profit:+,.0f}</div>
-            <div class="kpi-sub">利润率 {profit_rate:+.1f}%</div>
+            <div class="kpi-value" style="color:{profit_color}">{('¥' + f'{day_profit:+,.0f}') if day_profit is not None else '<span style="font-size:18px;color:#64748b">—</span>'}</div>
+            <div class="kpi-sub">{('利润率 ' + f'{profit_rate:+.1f}%') if profit_rate is not None else '部分站点未验证'}</div>
         </div>
         <div class="kpi-card">
             <div class="kpi-title">单均净利{'<sup style="color:#64748b;font-size:10px">*</sup>' if any_unconfirmed else ''}</div>
-            <div class="kpi-value" style="color:{profit_color}">¥{(day_profit/total_orders):+.2f}</div>
+            <div class="kpi-value" style="color:{profit_color}">{('¥' + f'{(day_profit/total_orders):+.2f}') if day_profit is not None else '<span style="font-size:18px;color:#64748b">—</span>'}</div>
             <div class="kpi-sub">每单利润</div>
         </div>
     </div>
@@ -1914,11 +1943,11 @@ def update_index(dates_summary):
             station_cum[sn]['done'] += sp['订单量'] - sp.get('已取消', 0)
             station_cum[sn]['canc'] += sp.get('已取消', 0)
             station_cum[sn]['days'] += 1
-            station_cum[sn]['profit'] += sp.get('净利', 0)
+            station_cum[sn]['profit'] += (sp.get('净利') or 0)
             station_cum[sn]['revenue'] += sp.get('结算收入', 0)
-            station_cum[sn]['subsidy'] += sp.get('补贴', 0)
-            station_cum[sn]['labor'] += sp.get('人力成本', 0)
-            station_cum[sn]['canc_comp'] += sp.get('取消赔偿', 0)
+            station_cum[sn]['subsidy'] += (sp.get('补贴') or 0)
+            station_cum[sn]['labor'] += (sp.get('人力成本') or 0)
+            station_cum[sn]['canc_comp'] += (sp.get('取消赔偿') or 0)
 
     # Sort by cumulative orders descending
     cum_sorted = sorted(station_cum.items(), key=lambda x: x[1]['orders'], reverse=True)
@@ -1964,7 +1993,7 @@ def update_index(dates_summary):
     trend_data = sorted(dates_summary, key=lambda x: x['date'])
     trend_dates = [f"{int(d['date'][5:7])}/{int(d['date'][8:10])}" for d in trend_data]  # M/D
     trend_orders = [d['total'] for d in trend_data]
-    trend_profits = [d.get('day_profit', 0) for d in trend_data]
+    trend_profits = [(d.get('day_profit') or 0) for d in trend_data]
     trend_revenues = [d.get('day_revenue', 0) for d in trend_data]
     trend_labors = [d.get('day_labor', 0) for d in trend_data]
     trend_cancs = [d.get('day_canc_comp', 0) for d in trend_data]
@@ -2033,7 +2062,7 @@ def update_index(dates_summary):
         else:
             badge_html = ''
         mdd = datetime.strptime(d['date'], '%Y-%m-%d').strftime('%m%d')
-        profit_color = '#34d399' if d.get('day_profit', 0) >= 0 else '#f87171'
+        profit_color = '#34d399' if (d.get('day_profit') or 0) >= 0 else '#f87171'
 
         # 盈利摘要行 → 链接到单日 UE 分析页
         profit_row = ''
