@@ -2,9 +2,15 @@
 接力送 · 运营看板 — 统一构建脚本
 用法:
   python build_dashboard.py 2026-06-18          # 构建指定日期
+  python build_dashboard.py 2026-06-18 --sync   # 拉取计薪表+构建(一键)
   python build_dashboard.py --all               # 重建所有日期
   python build_dashboard.py --update-index      # 仅更新总主页
   python build_dashboard.py --fetch-payroll     # 从腾讯文档拉取最新计薪表
+
+标准更新流程:
+  1. 下载订单xls → 放入 26-06-XX/ 目录
+  2. python build_dashboard.py 2026-06-XX --sync
+  3. git add -A && git commit && git push
 """
 import pandas as pd
 import numpy as np
@@ -2417,6 +2423,7 @@ tr:hover td {{ background: rgba(129,140,248,0.04); }}
         f.write(index_html)
 
     print(f'\n[OK] 总主页已更新: {total_orders:,}单 / {num_dates}天 / {max_stations}站')
+    print(f'  git add -A && git commit -m "数据更新至{latest_date[-5:]}" && git push')
 
 
 def discover_dates():
@@ -2448,6 +2455,15 @@ if __name__ == '__main__':
         sys.exit(1)
 
     arg = sys.argv[1]
+    sync_mode = '--sync' in sys.argv
+
+    if sync_mode and arg not in ('--all', '--update-index', '--fetch-payroll'):
+        # 拉取计薪表后再构建
+        import subprocess
+        print('>>> 拉取腾讯文档计薪表...')
+        script = os.path.join(BASE_DIR, 'scripts', 'fetch_tencent_doc.py')
+        subprocess.run([sys.executable, script], check=True)
+        print()
 
     if arg == '--all':
         dates = discover_dates()
