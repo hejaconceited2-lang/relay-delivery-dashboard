@@ -1,6 +1,7 @@
 # Source data (large, not version-controlled)
 *.xls
 *.xlsx
+!接力送真实人力计薪/*.xlsx  # 计薪表需版本追踪
 
 # Python cache
 __pycache__/
