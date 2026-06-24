@@ -429,8 +429,9 @@ def make_hourly_chart(sdf, title='分时订单量', color='#818cf8'):
     return dark_fig(fig).to_html(full_html=False, include_plotlyjs=False, config=PLOTLY_CONFIG)
 
 
-def make_time_hist(sdf, title='配送时长分布', color='#818cf8'):
-    times = sdf.loc[sdf['送达时间_dt'].notna(), '配送时长_min'].dropna()
+def make_time_hist(sdf, title='接力时长分布', color='#818cf8'):
+    mask = sdf['骑手1经手_dt'].notna() & sdf['送达时间_dt'].notna()
+    times = sdf.loc[mask, '接力时长_min'].dropna()
     if len(times) == 0:
         return '<p style="color:#64748b">无完成订单</p>'
     fig = go.Figure()
@@ -591,8 +592,8 @@ def build_station_tab(r, station_charts):
                 <div class="kpi-value" id="subsidy_{tab_id}" style="color:{subsidy_color}">{subsidy_per_day}元</div>
                 <div class="kpi-sub" id="subsidy_formula_{tab_id}">{f'({onsite_calc}-1)x80' if is_ours and onsite_calc else 'N/A'}</div>
             </div>
-            {kpi_card('平均配送', f"{r['平均配送min']}min" if pd.notna(r['平均配送min']) else 'N/A', f"中位 {r['中位配送min']}min", '#fbbf24')}
-            {kpi_card('超60min', r['超60min'], f"最长 {r['最长配送min']}min" if pd.notna(r['最长配送min']) else '', '#fb923c')}
+            {kpi_card('平均接力', f"{r['平均接力min']}min" if pd.notna(r['平均接力min']) else 'N/A', f"中位 {r['中位接力min']}min", '#34d399')}
+            {kpi_card('接力超30min', r['接力超30min'], f"最长 {r['最长接力min']}min" if pd.notna(r['最长接力min']) else '', '#fb923c')}
         </div>
 
 """ + (f"""
@@ -611,7 +612,7 @@ def build_station_tab(r, station_charts):
 
         <div class="chart-grid">
             <div class="chart-box">{charts['hourly']}</div>
-            <div class="chart-box">{charts['time']}</div>
+            <div class="chart-box">{charts['relay_time']}</div>
         </div>
 
         <div class="section-chart" style="margin-top:16px;">
@@ -661,13 +662,14 @@ def process_date(date_str):
     df['arrival_hour'] = df['骑手1经手_dt'].dt.hour.astype('Int64')  # 到达点位时段
     df['delivery_hour'] = df['送达时间_dt'].dt.hour.astype('Int64')   # 送达时段
     mask_done = df['送达时间_dt'].notna()
-    df.loc[mask_done, '配送时长_min'] = (
-        df.loc[mask_done, '送达时间_dt'] - df.loc[mask_done, '下单时间_dt']
-    ).dt.total_seconds() / 60
-    # 接力配送时长: 到达→送达
+    # 接力配送时长(主指标): 骑手1到达→送达
     mask_arrival = df['骑手1经手_dt'].notna() & mask_done
     df.loc[mask_arrival, '接力时长_min'] = (
         df.loc[mask_arrival, '送达时间_dt'] - df.loc[mask_arrival, '骑手1经手_dt']
+    ).dt.total_seconds() / 60
+    # 全段时长(参考): 下单→送达
+    df.loc[mask_done, '配送时长_min'] = (
+        df.loc[mask_done, '送达时间_dt'] - df.loc[mask_done, '下单时间_dt']
     ).dt.total_seconds() / 60
 
     t_min = df['下单时间_dt'].min()
@@ -748,8 +750,8 @@ def process_date(date_str):
     done = (df['物流单状态'] == '已送达').sum()
     canc = (df['物流单状态'] == '已取消').sum()
     pickup = (df['物流单状态'] == '已取货').sum()
-    avg_time = df.loc[mask_done, '配送时长_min'].mean()
-    median_time = df.loc[mask_done, '配送时长_min'].median()
+    avg_time = df.loc[mask_arrival, '接力时长_min'].mean()
+    median_time = df.loc[mask_arrival, '接力时长_min'].median()
     peak_h = df['hour'].value_counts().idxmax()
     peak_cnt = df['hour'].value_counts().max()
 
@@ -775,7 +777,7 @@ def process_date(date_str):
             gap = None; meets = False
             gap_label = '登记未知' if reg_count is None else '?'
 
-        s_times = sdf.loc[mask_done, '配送时长_min']
+        s_times = sdf.loc[mask_arrival, '接力时长_min']  # 接力时长为主指标
         # 取消赔偿: 已取消订单的实付金额合计
         canc_mask = sdf['物流单状态'] == '已取消'
         canc_comp = sdf.loc[canc_mask, '订单实付'].sum() if canc_mask.any() else 0
@@ -811,10 +813,10 @@ def process_date(date_str):
             '人工来源': labor_source,
             '工时': s_hours,
             '时薪': s_rate,
-            '平均配送min': round(s_times.mean(), 1) if len(s_times) > 0 else None,
-            '中位配送min': round(s_times.median(), 1) if len(s_times) > 0 else None,
-            '超60min': int((s_times > 60).sum()),
-            '最长配送min': round(s_times.max(), 1) if len(s_times) > 0 else None,
+            '平均接力min': round(s_times.mean(), 1) if len(s_times) > 0 else None,
+            '中位接力min': round(s_times.median(), 1) if len(s_times) > 0 else None,
+            '接力超30min': int((s_times > 30).sum()),
+            '最长接力min': round(s_times.max(), 1) if len(s_times) > 0 else None,
         })
 
     st = pd.DataFrame(station_rows).sort_values('订单量', ascending=False)
@@ -875,10 +877,10 @@ def process_date(date_str):
 
     html_hour_all = make_hourly_chart(df, '全站分时订单量', '#818cf8')
 
-    times_all = df.loc[mask_done, '配送时长_min'].dropna()
+    times_all = df.loc[mask_arrival, '接力时长_min'].dropna()
     fig_time_all = go.Figure()
     fig_time_all.add_trace(go.Histogram(
-        x=times_all, nbinsx=40, marker_color='#818cf8',
+        x=times_all, nbinsx=30, marker_color='#34d399',
         hovertemplate='%{x:.0f}min: %{y}单<extra></extra>'
     ))
     for pct, clr, label in [(50, '#34d399', '中位'), (90, '#f87171', 'P90')]:
@@ -887,7 +889,7 @@ def process_date(date_str):
                                annotation_text=f'{label} {val:.0f}min', annotation_position='top',
                                annotation_font_color=clr)
     fig_time_all.update_layout(
-        title=f'全站配送时长分布（均值{times_all.mean():.0f}min · n={len(times_all)}）',
+        title=f'全站接力时长分布（均值{times_all.mean():.0f}min · 骑手到达→送达 · n={len(times_all)}）',
         height=320, xaxis_title=None, yaxis_title=None, bargap=0.05,
     )
     html_time_all = dark_fig(fig_time_all).to_html(full_html=False, include_plotlyjs=False, config=PLOTLY_CONFIG, div_id='chart_time_all')
@@ -920,7 +922,7 @@ def process_date(date_str):
 
         station_charts[full_name] = {
             'hourly': make_hourly_chart(sdf, f'{short} · 分时订单量', color),
-            'time': make_time_hist(sdf, f'{short} · 配送时长分布', color),
+            'relay_time': make_time_hist(sdf, f'{short} · 接力时长分布', color),
             'timeline': make_dual_timeline(sdf, timeline_title),
             'trend': trend_html,
         }
@@ -968,7 +970,7 @@ def process_date(date_str):
         <td>{per_s}</td>
         <td><b style="color:{gap_color}">{gap_s}{pickup_s}</b></td>
         <td>{badge}</td>
-        <td>{r['平均配送min']}min</td>
+        <td>{r['平均接力min']}min</td>
         <td>{r['已取消']}</td>
         <td>¥{r['取消赔偿']:,.0f}</td>
     </tr>"""
@@ -990,9 +992,9 @@ def process_date(date_str):
             {kpi_card('竞争方订单', f'{len(comps)}单', f'{len(st_comps)}站', '#f87171')}
             {kpi_card('已完成', f'{done_pct:.1f}%', f'{done}已送达 / {canc}取消', '#34d399')}
             {kpi_card('配送中', pickup, '已取货未送达', '#fbbf24')}
-            {kpi_card('平均配送时长', f'{avg_time:.0f}min', f'中位 {median_time:.0f}min', '#fbbf24')}
+            {kpi_card('平均接力时长', f'{avg_time:.0f}min', f'中位 {median_time:.0f}min', '#34d399')}
             {kpi_card('峰值', f'{peak_cnt}单', f'{int(peak_h):02d}:00时段', '#f472b6')}
-            {kpi_card('超60min', int((df['配送时长_min'] > 60).sum()), f'占比 {(df["配送时长_min"] > 60).sum()/done*100:.1f}%' if done > 0 else '', '#fb923c')}
+            {kpi_card('接力超30min', int((df['接力时长_min'] > 30).sum()), f'占比 {(df["接力时长_min"] > 30).sum()/mask_arrival.sum()*100:.1f}%' if mask_arrival.sum() > 0 else '', '#fb923c')}
         </div>
 
         <div class="section-chart">
@@ -1029,7 +1031,7 @@ def process_date(date_str):
                 <thead><tr>
                     <th>站点</th><th>订单量</th><th>完成率</th><th>系统登记</th><th>真实人数</th><th>归属人</th>
                     <th>人均单量</th><th>距20单门槛</th><th>达标</th>
-                    <th>平均配送</th><th>已取消</th><th>取消赔偿</th>
+                    <th>平均接力</th><th>已取消</th><th>取消赔偿</th>
                 </tr></thead>
                 <tbody>{table_html}</tbody>
             </table>
