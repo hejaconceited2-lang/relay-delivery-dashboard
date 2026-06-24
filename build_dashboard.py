@@ -1547,10 +1547,16 @@ function exportRegisteredConfig() {{
                 '达标': r['达标'],
             })
 
-    day_profit = round(day_total_revenue + day_total_subsidy - day_total_labor - day_total_material - day_total_canc_comp, 1) if day_confirmed_count > 0 else None
-
     # 检查是否有未确认真实人数的站点
     any_unconfirmed = any(not sp.get('真实人数已确认', False) for sp in station_profits)
+
+    # 日净利：有未确认站点时整体不可靠，显示占位符
+    if any_unconfirmed:
+        day_profit = None
+    elif day_confirmed_count > 0:
+        day_profit = round(day_total_revenue + day_total_subsidy - day_total_labor - day_total_material - day_total_canc_comp, 1)
+    else:
+        day_profit = None
 
     # ── 生成单日 UE 分析页 ──
     build_ue_page(date_display, total, len(st_ours), station_profits,
@@ -2082,19 +2088,28 @@ def update_index(dates_summary):
             badge_html = ''
         mdd = datetime.strptime(d['date'], '%Y-%m-%d').strftime('%m%d')
         profit_color = '#34d399' if (d.get('day_profit') or 0) >= 0 else '#f87171'
+        day_unconfirmed = d.get('any_unconfirmed', False)
 
         # 盈利摘要行 → 链接到单日 UE 分析页
         profit_row = ''
         if d.get('day_profit') is not None:
-            day_unconfirmed = d.get('any_unconfirmed', False)
-            asterisk = '<sup style="color:#64748b">*</sup>' if day_unconfirmed else ''
             profit_row = f"""
         <a href="{mdd}_ue.html" class="profit-summary">
           <span>结算 ¥{d.get('day_revenue',0):,.0f}</span>
-          <span>人力 -¥{d.get('day_labor',0):,.0f}{asterisk}</span>
+          <span>人力 -¥{d.get('day_labor',0):,.0f}</span>
           <span>赔偿 -¥{d.get('day_canc_comp',0):,.0f}</span>
-          <span>补贴 +¥{d.get('day_subsidy',0):,.0f}{asterisk}</span>
-          <span class="profit-net" style="color:{profit_color}">日净利 {d['day_profit']:+,.0f}元{asterisk}</span>
+          <span>补贴 +¥{d.get('day_subsidy',0):,.0f}</span>
+          <span class="profit-net" style="color:{profit_color}">日净利 {d['day_profit']:+,.0f}元</span>
+          <span class="profit-arrow">&rarr;</span>
+        </a>"""
+        elif day_unconfirmed:
+            profit_row = f"""
+        <a href="{mdd}_ue.html" class="profit-summary">
+          <span>结算 ¥{d.get('day_revenue',0):,.0f}</span>
+          <span style="color:#64748b">人力 —</span>
+          <span>赔偿 -¥{d.get('day_canc_comp',0):,.0f}</span>
+          <span>补贴 +¥{d.get('day_subsidy',0):,.0f}</span>
+          <span class="profit-net" style="color:#64748b">日净利 —</span>
           <span class="profit-arrow">&rarr;</span>
         </a>"""
 
