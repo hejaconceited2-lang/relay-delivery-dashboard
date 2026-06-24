@@ -18,6 +18,23 @@ import plotly.graph_objects as go
 from datetime import datetime
 import sys, os, glob, json
 
+# 动态加载计薪表解析器
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'scripts'))
+from parse_payroll import parse_payroll
+
+def _load_payroll_config():
+    """从计薪表xlsx动态加载配置, 替代硬编码"""
+    payroll_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                '接力送真实人力计薪', '接力送计薪表格.xlsx')
+    if os.path.exists(payroll_path):
+        daily_labor, daily_headcount, actual_staff = parse_payroll(payroll_path)
+        # 用解析结果覆盖硬编码
+        globals()['DAILY_LABOR_COST'] = daily_labor
+        globals()['ACTUAL_STAFF_OVERRIDES'] = daily_headcount
+        globals()['ACTUAL_STAFF'] = actual_staff
+        return True
+    return False
+
 # ════════════════════════════════════════════════════════
 # 系统登记人员回退配置（仅作回退：当天无骑手数据时使用）
 # 系统登记人员优先从数据自动检测：经手骑手2~N 不重复人数
@@ -189,6 +206,12 @@ DAILY_LABOR_COST = {
         '分段履约广州中大附三岭南医院': 225,
     },
 }
+
+# ── 从计薪表xlsx动态加载配置（覆盖上方默认值）──
+if _load_payroll_config():
+    print('  [配置] 已从计薪表xlsx加载人力成本数据')
+else:
+    print('  [配置] 未找到计薪表xlsx, 使用默认配置')
 
 # 日期特定系统登记人员覆盖（仅记录与基准不同的日期）
 # 格式: "YYYY-MM-DD" -> {站点: 人数}
