@@ -1,112 +1,68 @@
 """
-从腾讯文档拉取计薪表格（通过浏览器自动化）
-首次运行会打开浏览器窗口，需要手动登录一次。
-后续运行复用登录状态，自动下载。
+从腾讯文档拉取计薪表格
+优先: 浏览器菜单导出 (需持久化登录态)
+兜底: 提示手动下载
 """
-import sys, os, json, time
+import sys, os, time
 from playwright.sync_api import sync_playwright
 
-DOC_URL = "https://docs.qq.com/sheet/DUW9WanhjQXNTa0hk?tab=849pll"
+DOC_URL = "https://docs.qq.com/sheet/DUW9WanhjQXNTa0hk"
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-OUT_DIR = os.path.join(BASE_DIR, "接力送真实人力计薪")
-OUT_FILE = os.path.join(OUT_DIR, "接力送计薪表格.xlsx")
-
-def intercept_api(page, api_data):
-    """拦截 XHR 响应, 捕获 sheet 数据"""
-    def handle_response(response):
-        url = response.url
-        if "dop-api/sheet" in url and response.status == 200:
-            try:
-                data = response.json()
-                api_data.append(data)
-            except:
-                pass
-    page.on("response", handle_response)
+OUT_FILE = os.path.join(BASE_DIR, "接力送真实人力计薪", "接力送计薪表格.xlsx")
 
 def main():
-    os.makedirs(OUT_DIR, exist_ok=True)
+    os.makedirs(os.path.dirname(OUT_FILE), exist_ok=True)
+    old_size = os.path.getsize(OUT_FILE) if os.path.exists(OUT_FILE) else 0
+    downloaded = []
 
     with sync_playwright() as p:
-        # 持久化浏览器上下文: 记住登录状态
-        user_data_dir = os.path.join(os.path.expanduser("~"), ".claude", "tencent_browser")
-        context = p.chromium.launch_persistent_context(
-            user_data_dir,
-            headless=False,
-            accept_downloads=True,
+        user_data = os.path.expanduser("~/.claude/tencent_browser")
+        ctx = p.chromium.launch_persistent_context(
+            user_data, headless=False, accept_downloads=True
         )
-        page = context.new_page()
+        page = ctx.new_page()
 
-        # 下载监听
-        got_download = []
-        def on_download(download):
-            download.save_as(OUT_FILE)
-            got_download.append(True)
-            print(f"已保存: {OUT_FILE} ({os.path.getsize(OUT_FILE)} bytes)")
-        page.on("download", on_download)
-
-        # 拦截 sheet API 数据 (备用方案)
-        api_responses = []
-        intercept_api(page, api_responses)
+        page.on("download", lambda d: (d.save_as(OUT_FILE), downloaded.append(True)))
 
         print(f"打开: {DOC_URL}")
         page.goto(DOC_URL, timeout=60000, wait_until="domcontentloaded")
+        time.sleep(5)
 
-        # 等页面加载完成
-        print("等待页面加载...")
-        time.sleep(3)
-
-        # 检查是否需要登录
         if "login" in page.url.lower():
-            print("\n⚠ 需要登录! 请在浏览器中扫码/登录")
-            print("登录完成后按 Enter 继续...")
+            print("需要登录, 请在浏览器中扫码后按 Enter...")
             input()
 
-        # 等待 sheet 完全渲染
+        # 方法: 文件 → 下载 → Excel
+        print("尝试菜单导出...")
         try:
-            page.wait_for_selector('canvas', timeout=15000)
-            print("Sheet 已渲染")
-        except:
-            pass
-
-        time.sleep(2)
-
-        # 方法1: 尝试通过 UI 导出
-        print("尝试导出...")
-        try:
-            # 点击 "文件" 菜单
-            file_menu = page.locator('text=文件').first
-            if file_menu.is_visible():
-                file_menu.click()
-                time.sleep(0.5)
-                # 悬停 "下载"
-                download_menu = page.locator('text=下载').first
-                if download_menu.is_visible():
-                    download_menu.hover()
-                    time.sleep(0.3)
-                    # 点击 Excel
-                    excel_btn = page.locator('text=Excel').first
-                    if excel_btn.is_visible():
-                        excel_btn.click()
-                        print("已点击导出, 等待下载...")
-                        time.sleep(5)
-        except Exception as e:
-            print(f"UI 导出失败: {e}")
-
-        # 等待下载
-        for _ in range(10):
-            if os.path.exists(OUT_FILE) and os.path.getsize(OUT_FILE) > 500:
-                break
+            page.wait_for_selector('[class*="toolbar"]', timeout=10000)
             time.sleep(1)
+            page.locator('text=文件').first.click(timeout=5000)
+            time.sleep(0.5)
+            page.locator('text=下载').first.hover(timeout=3000)
+            time.sleep(0.3)
+            page.locator('text=Excel').first.click(timeout=3000)
+            time.sleep(8)
+        except Exception as e:
+            print(f"菜单导出失败: {e}")
 
-        if os.path.exists(OUT_FILE) and os.path.getsize(OUT_FILE) > 500:
-            print(f"成功! 文件: {OUT_FILE} ({os.path.getsize(OUT_FILE)} bytes)")
-        else:
-            print("自动导出未成功, 请手动操作:")
-            print("1. 在浏览器中点击 文件 → 下载 → Excel (.xlsx)")
-            print(f"2. 保存到: {OUT_FILE}")
-            input("完成后按 Enter...")
+        ctx.close()
 
-        context.close()
+    new_size = os.path.getsize(OUT_FILE) if os.path.exists(OUT_FILE) else 0
+    if new_size > 500:
+        changed = "已更新" if new_size != old_size else "未变化(可能腾讯文档无新数据)"
+        print(f"完成: {new_size} bytes ({changed})")
+        if new_size == old_size:
+            print("提示: 如腾讯文档已更新但文件未变化, 请手动下载:")
+            print(f"  1. 打开 {DOC_URL}")
+            print(f"  2. 文件 → 下载 → Excel (.xlsx)")
+            print(f"  3. 保存到: {OUT_FILE}")
+    else:
+        print("自动导出失败, 请手动下载:")
+        print(f"  1. 打开 {DOC_URL}")
+        print(f"  2. 文件 → 下载 → Excel (.xlsx)")
+        print(f"  3. 保存到: {OUT_FILE}")
+
 
 if __name__ == "__main__":
     main()

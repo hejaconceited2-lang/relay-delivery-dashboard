@@ -1,0 +1,22 @@
+=== 0615 ===
+  绿地星玥: PENDING labor=formula
+  和业广场: confirmed labor=payroll
+  珠江国际轻纺城: PENDING labor=formula
+=== 0618 ===
+  新亚洲电子城: PENDING labor=formula
+  和业广场: confirmed labor=payroll
+  孙逸仙北院: PENDING labor=formula
+  万菱广场: confirmed labor=payroll
+  金鹰大厦: confirmed labor=payroll
+  华林国际C馆: confirmed labor=payroll
+=== 0622 ===
+  中大附属第六医院: PENDING labor=formula
+  新中国大厦: PENDING labor=formula
+  新亚洲电子城: PENDING labor=formula
+  万科欧泊: PENDING labor=formula
+  孙逸仙北院: PENDING labor=formula
+=== 0624 ===
+  中大附三岭南医院: PENDING labor=formula
+  绿地星玥: PENDING labor=formula
+  珠江国际轻纺城: PENDING labor=formula
+  金鹰大厦: PENDING labor=formula
