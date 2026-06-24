@@ -120,6 +120,69 @@ MATERIAL_PER_STATION = 100 / 30  # 物料摊销 元/天/站
 SUBSIDY_PER_EXTRA = 80     # 补贴 (T-1)x80 元/天
 PER_PERSON_THRESHOLD = 20  # 补贴门槛 人均单量
 
+# 每日实际人工成本（基于计薪表，优先于 人数×工时×时薪 公式）
+# 格式: {"YYYY-MM-DD": {站点全名: 总薪资}}
+DAILY_LABOR_COST = {
+    # ── 万科欧泊 (90=3h×30) ──
+    '2026-06-07': {'分段履约广州万科欧泊': 180},
+    '2026-06-08': {'分段履约广州万科欧泊': 180},
+    '2026-06-09': {'分段履约广州万科欧泊': 270},
+    '2026-06-10': {'分段履约广州万科欧泊': 270},
+    '2026-06-11': {'分段履约广州万科欧泊': 270},
+    '2026-06-12': {'分段履约广州万科欧泊': 270},
+    '2026-06-13': {'分段履约广州万科欧泊': 270},
+    '2026-06-14': {'分段履约广州万科欧泊': 270},
+    '2026-06-15': {
+        '分段履约广州万科欧泊': 270,
+        '分段履约广州金鹰大厦': 240, '分段履约广州汇德国际': 180,
+        '分段履约广州万菱广场': 180,
+        '分段履约广州华林国际C馆': 90,
+        '分段履约广州和业广场': 180,
+    },
+    '2026-06-16': {
+        '分段履约广州万科欧泊': 270,
+        '分段履约广州金鹰大厦': 240, '分段履约广州汇德国际': 180,
+        '分段履约广州万菱广场': 270,
+        '分段履约广州华林国际C馆': 180,
+        '分段履约广州和业广场': 180,
+    },
+    '2026-06-17': {
+        '分段履约广州万科欧泊': 270,
+        '分段履约广州金鹰大厦': 240, '分段履约广州汇德国际': 180,
+        '分段履约广州中大附属第六医院': 270,
+        '分段履约广州万菱广场': 180,
+        '分段履约广州华林国际C馆': 180,
+        '分段履约广州和业广场': 270,
+    },
+    '2026-06-18': {
+        '分段履约广州万科欧泊': 270,
+        '分段履约广州金鹰大厦': 240, '分段履约广州汇德国际': 180,
+        '分段履约广州中大附属第六医院': 390,
+        '分段履约广州中大附三岭南医院': 150,
+        '分段履约广州万菱广场': 180,
+        '分段履约广州华林国际C馆': 90,
+        '分段履约广州和业广场': 270,
+    },
+    '2026-06-19': {
+        '分段履约广州万科欧泊': 270,
+        '分段履约广州中大附属第六医院': 450,
+        '分段履约广州中大附三岭南医院': 240,
+    },
+    '2026-06-20': {
+        '分段履约广州万科欧泊': 270,
+        '分段履约广州中大附属第六医院': 450,
+        '分段履约广州中大附三岭南医院': 210,
+    },
+    '2026-06-21': {
+        '分段履约广州万科欧泊': 270,
+        '分段履约广州中大附属第六医院': 450,
+        '分段履约广州中大附三岭南医院': 150,
+    },
+    '2026-06-22': {
+        '分段履约广州中大附三岭南医院': 225,
+    },
+}
+
 # 日期特定系统登记人员覆盖（仅记录与基准不同的日期）
 # 格式: "YYYY-MM-DD" -> {站点: 人数}
 # 06-17: 中大附属第六医院尚未从2人扩到6人
@@ -235,10 +298,15 @@ def get_station_histories():
             meets = per >= PER_PERSON_THRESHOLD if registered > 0 else False
             subsidy = (registered - 1) * SUBSIDY_PER_EXTRA if meets else 0
 
-            hours_per = HOURS_OVERRIDES.get(year_date, {}).get(s,
-                        STATION_HOURS.get(s, HOURS_PER_PERSON))
-            rate = STATION_LABOR_RATE.get(s, LABOR_RATE)
-            labor = registered * hours_per * rate
+            # 人工成本: 优先实际计薪数据
+            payroll_cost = DAILY_LABOR_COST.get(year_date, {}).get(s)
+            if payroll_cost is not None:
+                labor = payroll_cost
+            else:
+                hours_per = HOURS_OVERRIDES.get(year_date, {}).get(s,
+                            STATION_HOURS.get(s, HOURS_PER_PERSON))
+                rate = STATION_LABOR_RATE.get(s, LABOR_RATE)
+                labor = registered * hours_per * rate
             profit = cnt * SETTLEMENT_PRICE + subsidy - labor - MATERIAL_PER_STATION - canc_comp
 
             if s not in station_data:
@@ -429,8 +497,10 @@ def build_station_tab(r, station_charts):
     tab_id = short.replace(' ', '_')
     orders = r['订单量']
     canc_comp = r['取消赔偿']
+    s_labor = r.get('人工成本', onsite_calc * (r.get('工时', HOURS_PER_PERSON) or HOURS_PER_PERSON) * (r.get('时薪', LABOR_RATE) or LABOR_RATE))
     s_hours = r.get('工时', HOURS_PER_PERSON)
     s_rate = r.get('时薪', LABOR_RATE)
+    labor_source = r.get('人工来源', 'formula')
     registered_editable = 'kpi-editable' if is_ours and registered else ''
 
     # 真实点位人数显示
@@ -444,7 +514,7 @@ def build_station_tab(r, station_charts):
         onsite_color = '#64748b'
 
     return f"""
-    <div class="tab-panel" id="tab_{tab_id}" data-station="{short}" data-orders="{orders}" data-registered="{registered or 0}" data-onsite="{onsite_calc or 0}" data-onsite-confirmed="{1 if onsite_confirmed else 0}" data-ours="{1 if is_ours else 0}" data-canc-comp="{canc_comp or 0}" data-hours="{s_hours}" data-rate="{s_rate}">
+    <div class="tab-panel" id="tab_{tab_id}" data-station="{short}" data-orders="{orders}" data-registered="{registered or 0}" data-onsite="{onsite_calc or 0}" data-onsite-confirmed="{1 if onsite_confirmed else 0}" data-ours="{1 if is_ours else 0}" data-canc-comp="{canc_comp or 0}" data-labor="{s_labor}" data-labor-source="{labor_source}" data-hours="{s_hours or HOURS_PER_PERSON}" data-rate="{s_rate or LABOR_RATE}">
         <a href="javascript:switchTab('overview')" class="back-link">&larr; 返回总览</a>
         <div class="kpi-grid">
             {kpi_card('订单量', orders, f"完成率 {r['完成率']}%", '#818cf8')}
@@ -478,16 +548,17 @@ def build_station_tab(r, station_charts):
 """ + (f"""
         <div class="profit-line" id="profit_line_{tab_id}">
             <span>结算 ¥{orders * 2.5:,.0f}</span>
-            <span>人力 -¥{onsite_calc * s_hours * s_rate:,.0f}{'<sup style="color:#64748b">*</sup>' if not onsite_confirmed else ''}</span>
+            <span>人力 -¥{s_labor:,.0f}{'<sup style="color:#64748b">*</sup>' if not onsite_confirmed else ''}</span>
             <span>补贴 {'+¥' + str(subsidy_per_day) if subsidy_per_day > 0 else '0'}{'<sup style="color:#64748b">*</sup>' if not onsite_confirmed else ''}</span>
             <span>取消赔偿 -¥{int(canc_comp):,}</span>
-            <span class="profit-net-value" id="profit_net_{tab_id}" style="color:{'#34d399' if orders*2.5 + subsidy_per_day - onsite_calc*s_hours*s_rate - MATERIAL_PER_STATION - canc_comp >= 0 else '#f87171'}">净利 ¥{orders*2.5 + subsidy_per_day - onsite_calc*s_hours*s_rate - MATERIAL_PER_STATION - canc_comp:+,.0f}{'<sup style="color:#64748b">*</sup>' if not onsite_confirmed else ''}</span>
+            <span class="profit-net-value" id="profit_net_{tab_id}" style="color:{'#34d399' if orders*2.5 + subsidy_per_day - s_labor - MATERIAL_PER_STATION - canc_comp >= 0 else '#f87171'}">净利 ¥{orders*2.5 + subsidy_per_day - s_labor - MATERIAL_PER_STATION - canc_comp:+,.0f}{'<sup style="color:#64748b">*</sup>' if not onsite_confirmed else ''}</span>
         </div>
 """ if is_ours and onsite_calc else '') + f"""
         <div class="note-box" id="note_{tab_id}">
             <strong><span id="badge_{tab_id}">{badge}</span> {short}</strong> | <span id="status_{tab_id}">{status_note}</span>
             {'| 补贴条件：人均>=20单 且 >=1人满3h | 公式：(真实人数-1)x80' if is_ours and onsite_calc else ''}
             {('<br><span style="color:#64748b">* 人力/补贴/净利基于系统登记人数估算，真实点位人数待确认</span>' if not onsite_confirmed and is_ours else '') if is_ours and onsite_calc else ''}
+            {('<br><span style="color:#34d399">✓ 人力成本来自实际计薪数据</span>' if labor_source == 'payroll' and is_ours else '') if is_ours and onsite_calc else ''}
         </div>
 
         <div class="chart-grid">
@@ -658,10 +729,19 @@ def process_date(date_str):
         canc_mask = sdf['物流单状态'] == '已取消'
         canc_comp = sdf.loc[canc_mask, '订单实付'].sum() if canc_mask.any() else 0
         owner = STATION_OWNER.get(s, '竞争方' if grp == '竞争方' else '')
-        # 站点级工时/时薪覆盖
-        s_hours = HOURS_OVERRIDES.get(date_str, {}).get(s,
-                  STATION_HOURS.get(s, HOURS_PER_PERSON))
-        s_rate = STATION_LABOR_RATE.get(s, LABOR_RATE)
+        # 人工成本: 优先用计薪表实际数据, 否则回退到 人数×工时×时薪
+        payroll_cost = DAILY_LABOR_COST.get(date_str, {}).get(s)
+        if payroll_cost is not None:
+            labor_cost = payroll_cost
+            labor_source = 'payroll'  # 实际计薪数据
+            s_hours = None  # 无固定工时
+            s_rate = 30     # 仅作参考
+        else:
+            s_hours = HOURS_OVERRIDES.get(date_str, {}).get(s,
+                      STATION_HOURS.get(s, HOURS_PER_PERSON))
+            s_rate = STATION_LABOR_RATE.get(s, LABOR_RATE)
+            labor_cost = ons_count * s_hours * s_rate
+            labor_source = 'formula'  # 公式估算
         station_rows.append({
             '站点': s.replace('分段履约广州', ''),
             '全名': s, '归属': grp,
@@ -676,6 +756,8 @@ def process_date(date_str):
             '达标': 'Y' if meets else ('N' if reg_count else '?'),
             '缺口描述': gap_label,
             '归属人': owner,
+            '人工成本': labor_cost,
+            '人工来源': labor_source,
             '工时': s_hours,
             '时薪': s_rate,
             '平均配送min': round(s_times.mean(), 1) if len(s_times) > 0 else None,
@@ -1299,11 +1381,17 @@ function recalcUE(tabId, registered) {{
         else statusEl.textContent = '人均' + perPerson + '单 (差' + (20 - perPerson).toFixed(1) + '单)';
     }}
 
-    // 盈利重算（人力成本用真实人数）
+    // 盈利重算（人力成本: 有实际数据则用之, 否则公式估算）
     var settlement = orders * 2.5;
-    var hours = parseFloat(panel.dataset.hours) || 3;
-    var rate = parseFloat(panel.dataset.rate) || 30;
-    var labor = onsite * hours * rate;
+    var laborSource = panel.dataset.laborSource || 'formula';
+    var labor;
+    if (laborSource === 'payroll') {{
+        labor = parseInt(panel.dataset.labor) || 0;
+    }} else {{
+        var hours = parseFloat(panel.dataset.hours) || 3;
+        var rate = parseFloat(panel.dataset.rate) || 30;
+        labor = onsite * hours * rate;
+    }}
     var material = 100/30;
     var cancComp = parseFloat(panel.dataset.cancComp) || 0;
     var lineSubsidy = meets ? (onsite - 1) * 80 : 0;
@@ -1396,9 +1484,7 @@ function exportRegisteredConfig() {{
         if grp == '我方' and reg_count and cnt > 0:
             settlement = cnt * SETTLEMENT_PRICE
             revenue = settlement
-            hours_per = r.get('工时', HOURS_PER_PERSON)
-            rate = r.get('时薪', LABOR_RATE)
-            labor = ons_count * hours_per * rate    # 人力成本用真实人数(已回退)
+            labor = r['人工成本']  # 已在station_rows中优选DAILY_LABOR_COST
             material = MATERIAL_PER_STATION
             canc_comp = r['取消赔偿']
             meets = per_p and per_p >= PER_PERSON_THRESHOLD
