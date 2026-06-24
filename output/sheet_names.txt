@@ -1,0 +1,130 @@
+=== [番禺万科欧泊] shape=(18, 18) ===
+    46180  星期日  46181  星期一  46182  星期二  46183  星期三  46184  星期四  46185  星期五  46186  星期六 46187 星期日.1 Unnamed: 16 Unnamed: 17
+0      人员   薪资     人员   薪资     人员   薪资     人员   薪资     人员   薪资     人员   薪资     人员   薪资    人员    薪资         NaN         NaN
+1     林思敏   90    林思敏   90    黄晓林   90    黄晓林   90    黄晓林   90    黄晓林   90    黄晓林   90   黄晓林    90         NaN         NaN
+2     卢椅群   90    卢椅群   90    林思敏   90    林思敏   90    林思敏   90    林思敏   90    林思敏   90   卢椅群    90         NaN         NaN
+3     NaN  NaN    NaN  NaN    卢椅群   90    卢椅群   90    卢椅群   90    黄绍标   90    卢椅群   90   钟嘉惠    90         NaN         NaN
+4     NaN  NaN    NaN  NaN    NaN  NaN    NaN  NaN    NaN  NaN    NaN  NaN    NaN  NaN   NaN   NaN         NaN         NaN
+5     NaN  NaN    NaN  NaN    NaN  NaN    NaN  NaN    NaN  NaN    NaN  NaN    NaN  NaN   NaN   NaN          合计         NaN
+6     NaN  180    NaN  180    NaN  270    NaN  270      0  270    NaN  270    NaN  270   NaN   270        1980         已结清
+7     NaN  NaN    NaN  NaN    NaN  NaN    NaN  NaN    NaN  NaN    NaN  NaN    NaN  NaN   NaN   NaN         NaN         NaN
+8     NaN  NaN    NaN  NaN    NaN  NaN    NaN  NaN    NaN  NaN    NaN  NaN    NaN  NaN   NaN   NaN         NaN         NaN
+9     NaN  NaN    NaN  NaN    NaN  NaN    NaN  NaN    NaN  NaN    NaN  NaN    NaN  NaN   NaN   NaN         NaN         NaN
+10  46188  星期一  46189  星期二  46190  星期三  46191  星期四  46192  星期五  46193  星期六  46194  星期日   NaN   NaN         NaN         NaN
+11     人员   薪资     人员   薪资     人员   薪资     人员   薪资     人员   薪资     人员   薪资     人员   薪资   NaN   NaN         NaN         NaN
+12    黄晓林   90    黄晓林   90    黄晓林   90    黄晓林   90    黄晓林   90    黄晓林   90    黄晓林   90   NaN   NaN         NaN         NaN
+13    林思敏   90    林思敏   90    林思敏   90    林思敏   90    林思敏   90    林思敏   90    林思敏   90   NaN   NaN         NaN         NaN
+14    卢椅群   90    卢椅群   90    卢椅群   90    卢椅群   90    卢椅群   90    黄绍标   90    卢椅群   90   NaN   NaN         NaN         NaN
+15    NaN  NaN    NaN  NaN    NaN  NaN    NaN  NaN    NaN  NaN    NaN  NaN    NaN  NaN   NaN   NaN         NaN         NaN
+16    NaN  NaN    NaN  NaN    NaN  NaN    NaN  NaN    NaN  NaN    NaN  NaN    NaN  NaN    合计   NaN         NaN         NaN
+17    NaN  270    NaN  270    NaN  270    NaN  270      0  270    NaN  270    NaN  270  1890   申请中         NaN         NaN
+
+=== [中大附属第六医院] shape=(15, 15) ===
+   46188  星期一 46189  星期二 46190  星期三 46191  星期四 46192  星期五 46193  星期六 46194  星期日 Unnamed: 14
+0     人员   薪资    人员   薪资    人员   薪资    人员   薪资    人员   薪资    人员   薪资    人员   薪资         NaN
+1    NaN  NaN   NaN  NaN   陈贤乡   90   陈贤乡   90   陈贤乡   90   陈贤乡   90   陈贤乡   90         NaN
+2    NaN  NaN   NaN  NaN   谢佳俊   90   谢佳俊   90   谢佳俊   90   谢佳俊   90   谢佳俊   90         NaN
+3    NaN  NaN   NaN  NaN   雷文新   90   雷文新   90   雷文新   90   雷文新   90   雷文新   90         NaN
+4    NaN  NaN   NaN  NaN   NaN  NaN   詹佳龙   60   詹佳龙   60   詹佳龙   60   詹佳龙   60         NaN
+5    NaN  NaN   NaN  NaN   NaN  NaN   简双玲   60   简双玲   60   简双玲   60   简双玲   60          合计
+6    NaN  NaN   NaN  NaN   NaN  NaN   NaN  NaN   谭运亮   60   谭运亮   60   谭运亮   60         NaN
+7    NaN  NaN   NaN  NaN   NaN  NaN   NaN  NaN   NaN  NaN   NaN  NaN   NaN  NaN         NaN
+8    NaN  NaN   NaN  NaN   NaN  NaN   NaN  NaN   NaN  NaN   NaN  NaN   NaN  NaN         NaN
+9    NaN  NaN   NaN  NaN   NaN  NaN   NaN  NaN   NaN  NaN   NaN  NaN   NaN  NaN         NaN
+10   NaN  NaN   NaN  NaN   NaN  NaN   NaN  NaN   NaN  NaN   NaN  NaN   NaN  NaN         NaN
+11   NaN  NaN   NaN  NaN   NaN  NaN   NaN  NaN   NaN  NaN   NaN  NaN   NaN  NaN         NaN
+12   NaN  NaN   NaN  NaN   NaN  NaN   NaN  NaN   NaN  NaN   NaN  NaN   NaN  NaN         NaN
+13   NaN  NaN   NaN  NaN   NaN  NaN   NaN  NaN   NaN  NaN   NaN  NaN   NaN  NaN          合计
+14   NaN    0   NaN    0   NaN  270     0  390   NaN  390   NaN  390   NaN  390        1830
+
+=== [番禺万达] shape=(27, 13) ===
+    46188  星期一  46189  星期二  46190  星期三  46191  星期四 Unnamed: 8 Unnamed: 9 Unnamed: 10 Unnamed: 11 Unnamed: 12
+0      人员   薪资     人员   薪资     人员   薪资     人员   薪资        NaN        NaN         NaN         NaN         NaN
+1     苏伟峰   60    苏伟峰   60    苏伟峰   60    苏伟峰   60        NaN        NaN         NaN         NaN         NaN
+2     李海琪   60    李海琪   60    卢明晞   60    李海琪   60        NaN        NaN         NaN         NaN         NaN
+3     卢明晞   60    钟镇华   60    李海琪   60    卢明晞   60        NaN        NaN         NaN         NaN         NaN
+4     钟镇华   60    卢明晞   60    陈梓青   60    陈梓青   60        NaN        NaN         NaN         NaN         NaN
+5     陈梓青   60    林思敏   60    卢椅群   60    钟嘉惠   60        NaN        NaN         NaN         NaN         NaN
+6     林思敏   60    陈梓青   60    林咏红   60    林思敏   60        NaN        NaN         NaN         NaN         NaN
+7     林咏红   60    林咏红   60    林思敏   60    卢椅群   60        NaN        NaN         NaN         NaN         NaN
+8     钟嘉惠   60    NaN  NaN    钟嘉惠   60    林咏红   60        NaN        NaN         NaN         NaN         NaN
+9     卢椅群   60    黄清华   60    黄清华   60    黄清华   60        NaN        NaN         NaN         NaN         NaN
+10    NaN  NaN    卢椅群   60    黄晓林   60    黄晓林   60         合计        NaN         NaN         NaN         NaN
+11    NaN  540    NaN  540    NaN  600    NaN  600       2280        申请中         NaN         NaN         NaN
+12    NaN  NaN    NaN  NaN    NaN  NaN    NaN  NaN        NaN        NaN         NaN         NaN         NaN
+13    NaN  NaN    NaN  NaN    NaN  NaN    NaN  NaN        NaN        NaN         NaN         NaN         NaN
+14  46195  星期一  46196  星期二  46197  星期三  46198  星期四      46199        星期五       46200         星期六         NaN
+15     人员   薪资     人员   薪资     人员   薪资     人员   薪资         人员         薪资          人员          薪资         NaN
+16    NaN  NaN    NaN  NaN    NaN  NaN    NaN  NaN        NaN        NaN         NaN         NaN         NaN
+17    NaN  NaN    NaN  NaN    NaN  NaN    NaN  NaN        NaN        NaN         NaN         NaN         NaN
+18    NaN  NaN    NaN  NaN    NaN  NaN    NaN  NaN        NaN        NaN         NaN         NaN         NaN
+19    NaN  NaN    NaN  NaN    NaN  NaN    NaN  NaN        NaN        NaN         NaN         NaN         NaN
+20    NaN  NaN    NaN  NaN    NaN  NaN    NaN  NaN        NaN        NaN         NaN         NaN         NaN
+21    NaN  NaN    NaN  NaN    NaN  NaN    NaN  NaN        NaN        NaN         NaN         NaN         NaN
+22    NaN  NaN    NaN  NaN    NaN  NaN    NaN  NaN        NaN        NaN         NaN         NaN         NaN
+23    NaN  NaN    NaN  NaN    NaN  NaN    NaN  NaN        NaN        NaN         NaN         NaN         NaN
+24    NaN  NaN    NaN  NaN    NaN  NaN    NaN  NaN        NaN        NaN         NaN         NaN         NaN
+25    NaN  NaN    NaN  NaN    NaN  NaN    NaN  NaN        NaN        NaN         NaN         NaN          合计
+26    NaN    0    NaN    0    NaN    0    NaN    0        NaN          0         NaN           0           0
+
+=== [汇德国际] shape=(4, 13) ===
+  Unnamed: 0 2026/6/15星期一  Unnamed: 2 2026/6/16星期二  Unnamed: 4 2026/6/17星期三  Unnamed: 6 2026/6/18星期四  Unnamed: 8  2026/6/19星期五\n(端午假期)  Unnamed: 10 Unnamed: 11 Unnamed: 12
+0         汇德          钟文轩        60.0          钟文轩        60.0          钟文轩        60.0          钟文轩          65                   NaN          NaN         NaN         NaN
+1        NaN           蔡文        60.0           蔡文        60.0           蔡文        60.0           蔡文          65                   NaN          NaN         NaN         NaN
+2        NaN          黄沐芸        60.0          黄沐芸        60.0          黄沐芸        60.0          黄沐芸          65                   NaN          NaN           合         NaN
+3        NaN          NaN         NaN          NaN         NaN          NaN         NaN     蔡文（物料保管）          10                   NaN          NaN         745         已结清
+
+=== [北京路广百] shape=(4, 13) ===
+  Unnamed: 0 2026/6/15星期一  Unnamed: 2 2026/6/16星期二  Unnamed: 4 2026/6/17星期三  Unnamed: 6 2026/6/18星期四  Unnamed: 8  2026/6/19星期五\n(端午假期)  Unnamed: 10 Unnamed: 11 Unnamed: 12
+0      北京路广百          陈朝林        60.0          陈朝林        60.0          陈朝林        60.0          陈朝林          60                   NaN          NaN         NaN         NaN
+1        NaN          徐汉星        60.0          徐汉星        60.0          徐汉星        60.0          徐汉星          60                   NaN          NaN         NaN         NaN
+2        NaN          赖秀花        60.0          赖秀花        60.0          赖秀花        60.0          赖秀花          60                   NaN          NaN           合         NaN
+3        NaN          NaN         NaN          NaN         NaN          NaN         NaN    陈朝林（物料保管）          10                   NaN          NaN         730         已结清
+
+=== [金鹰大厦] shape=(4, 13) ===
+  Unnamed: 0 2026-06-15 00:00:00   星期一 2026-06-16 00:00:00   星期二 2026-06-17 00:00:00   星期三 2026-06-18 00:00:00  星期四  2026-06-19 00:00:00  星期五\n(端午假期) Unnamed: 11 Unnamed: 12
+0       金鹰大厦                 蔡嘉成  90.0                 蔡嘉成  90.0                 蔡嘉成  90.0                 蔡嘉成   90                  NaN          NaN         NaN         NaN
+1        NaN                  蓝乐  90.0                  蓝乐  90.0                  蓝乐  90.0                  蓝乐   90                  NaN          NaN         NaN         NaN
+2        NaN                  娜娜  60.0                  娜娜  60.0                  娜娜  60.0                  娜娜   60                  NaN          NaN           合         NaN
+3        NaN                 NaN   NaN                 NaN   NaN                 NaN   NaN           蔡嘉成（物料保管）   10                  NaN          NaN         970         已结清
+
+=== [万菱广场] shape=(3, 13) ===
+  Unnamed: 0 2026/6/15星期一  Unnamed: 2 2026/6/16星期二  Unnamed: 4 2026/6/17星期三  Unnamed: 6 2026/6/18星期四  Unnamed: 8  2026/6/19星期五\n(端午假期)  Unnamed: 10 Unnamed: 11 Unnamed: 12
+0       万菱广场          廖燕锋        90.0          廖燕锋          90          廖燕锋        90.0          廖燕锋        90.0                   NaN          NaN         NaN         NaN
+1        NaN          胡文轩        90.0          胡文轩          90          胡文轩        90.0          胡文轩        90.0                   NaN          NaN           合         NaN
+2        NaN          NaN         NaN          吴恒志          90          NaN         NaN          NaN         NaN                   NaN          NaN         810         已结清
+
+=== [华林国际C馆] shape=(4, 13) ===
+  Unnamed: 0 2026/6/15星期一  Unnamed: 2 2026/6/16星期二  Unnamed: 4 2026/6/17星期三  Unnamed: 6    2026/6/18星期四  Unnamed: 8  2026/6/19星期五\n(端午假期)  Unnamed: 10 Unnamed: 11 Unnamed: 12
+0     华林国际C馆           黄丹        90.0           黄丹        90.0           黄丹        90.0              黄丹        45.0                   NaN          NaN         NaN         NaN
+1        NaN          NaN         NaN   黄丹(临时朋友上班)        90.0          曾中怡        90.0             曾中怡        45.0                   NaN          NaN         NaN         NaN
+2        NaN          NaN         NaN          NaN         NaN          NaN         NaN  黄丹（物料保管-小卖部代交）        20.0                   NaN          NaN           合         NaN
+3        NaN          NaN         NaN          NaN         NaN          NaN         NaN             NaN         NaN                   NaN          NaN         560         已结清
+
+=== [和业广场] shape=(4, 13) ===
+  Unnamed: 0 2026/6/15星期一  Unnamed: 2 2026/6/16星期二  Unnamed: 4 2026/6/17星期三  Unnamed: 6 2026/6/18星期四  Unnamed: 8  2026/6/19星期五\n(端午假期)  Unnamed: 10 Unnamed: 11 Unnamed: 12
+0       和业广场          张子慧        90.0          张子慧        90.0          张子慧        90.0          张子慧          90                   NaN          NaN         NaN         NaN
+1        NaN          吴子俏        90.0          吴子俏        90.0          吴子俏        90.0          吴子俏          90                   NaN          NaN         NaN         NaN
+2        NaN          NaN         NaN          NaN         NaN          庄志荣        90.0          庄志荣          90                   NaN          NaN           合         NaN
+3        NaN          NaN         NaN          NaN         NaN          NaN         NaN          吴子俏          10                   NaN          NaN         910         已结清
+
+=== [中大附三岭南医院] shape=(17, 10) ===
+                  46191  星期四 46192    星期五 46193    星期六 46194    星期日 Unnamed: 8 Unnamed: 9
+0                   林佳宁   90   林石英   90.0   林石英   60.0   黄慧源   60.0        NaN        NaN
+1                   黄慧源   60   黄慧源   90.0   黄慧源   60.0   张炳英   90.0        NaN        NaN
+2                   NaN  NaN   张炳英   60.0   张炳英   90.0   NaN    NaN        NaN        NaN
+3                   NaN  NaN   NaN    NaN   NaN    NaN   NaN    NaN        NaN        NaN
+4                   NaN  NaN   NaN    NaN   NaN    NaN   NaN    NaN        NaN        NaN
+5                   NaN  NaN   NaN    NaN   NaN    NaN   NaN    NaN         合计        NaN
+6                   NaN  150   NaN  240.0   NaN  210.0   NaN  150.0        750        已申请
+7                   NaN  NaN   NaN    NaN   NaN    NaN   NaN    NaN        NaN        NaN
+8                   NaN  NaN   NaN    NaN   NaN    NaN   NaN    NaN        NaN        NaN
+9   2026-06-22 00:00:00  星期一   NaN    NaN   NaN    NaN   NaN    NaN        NaN        NaN
+10                  林佳宁   75   NaN    NaN   NaN    NaN   NaN    NaN        NaN        NaN
+11                  黄慧源   60   NaN    NaN   NaN    NaN   NaN    NaN        NaN        NaN
+12                  张炳英   90   NaN    NaN   NaN    NaN   NaN    NaN        NaN        NaN
+13                  NaN  NaN   NaN    NaN   NaN    NaN   NaN    NaN        NaN        NaN
+14                  NaN  NaN   NaN    NaN   NaN    NaN   NaN    NaN        NaN        NaN
+15                  NaN  NaN   NaN    NaN   NaN    NaN   NaN    NaN        NaN        NaN
+16                  NaN  225   NaN    NaN   NaN    NaN   NaN    NaN        NaN        NaN
+

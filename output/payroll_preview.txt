@@ -1,0 +1,41 @@
+Shape: (18, 18)
+Columns (18):
+  [0] 46180  (非空:8)
+  [1] 星期日  (非空:10)
+  [2] 46181  (非空:8)
+  [3] 星期一  (非空:10)
+  [4] 46182  (非空:9)
+  [5] 星期二  (非空:11)
+  [6] 46183  (非空:9)
+  [7] 星期三  (非空:11)
+  [8] 46184  (非空:11)
+  [9] 星期四  (非空:11)
+  [10] 46185  (非空:9)
+  [11] 星期五  (非空:11)
+  [12] 46186  (非空:9)
+  [13] 星期六  (非空:11)
+  [14] 46187  (非空:6)
+  [15] 星期日.1  (非空:6)
+  [16] Unnamed: 16  (非空:2)
+  [17] Unnamed: 17  (非空:1)
+
+Head 50:
+    46180  星期日  46181  星期一  46182  星期二  46183  星期三  46184  星期四  46185  星期五  46186  星期六 46187 星期日.1 Unnamed: 16 Unnamed: 17
+0      人员   薪资     人员   薪资     人员   薪资     人员   薪资     人员   薪资     人员   薪资     人员   薪资    人员    薪资         NaN         NaN
+1     林思敏   90    林思敏   90    黄晓林   90    黄晓林   90    黄晓林   90    黄晓林   90    黄晓林   90   黄晓林    90         NaN         NaN
+2     卢椅群   90    卢椅群   90    林思敏   90    林思敏   90    林思敏   90    林思敏   90    林思敏   90   卢椅群    90         NaN         NaN
+3     NaN  NaN    NaN  NaN    卢椅群   90    卢椅群   90    卢椅群   90    黄绍标   90    卢椅群   90   钟嘉惠    90         NaN         NaN
+4     NaN  NaN    NaN  NaN    NaN  NaN    NaN  NaN    NaN  NaN    NaN  NaN    NaN  NaN   NaN   NaN         NaN         NaN
+5     NaN  NaN    NaN  NaN    NaN  NaN    NaN  NaN    NaN  NaN    NaN  NaN    NaN  NaN   NaN   NaN          合计         NaN
+6     NaN  180    NaN  180    NaN  270    NaN  270      0  270    NaN  270    NaN  270   NaN   270        1980         已结清
+7     NaN  NaN    NaN  NaN    NaN  NaN    NaN  NaN    NaN  NaN    NaN  NaN    NaN  NaN   NaN   NaN         NaN         NaN
+8     NaN  NaN    NaN  NaN    NaN  NaN    NaN  NaN    NaN  NaN    NaN  NaN    NaN  NaN   NaN   NaN         NaN         NaN
+9     NaN  NaN    NaN  NaN    NaN  NaN    NaN  NaN    NaN  NaN    NaN  NaN    NaN  NaN   NaN   NaN         NaN         NaN
+10  46188  星期一  46189  星期二  46190  星期三  46191  星期四  46192  星期五  46193  星期六  46194  星期日   NaN   NaN         NaN         NaN
+11     人员   薪资     人员   薪资     人员   薪资     人员   薪资     人员   薪资     人员   薪资     人员   薪资   NaN   NaN         NaN         NaN
+12    黄晓林   90    黄晓林   90    黄晓林   90    黄晓林   90    黄晓林   90    黄晓林   90    黄晓林   90   NaN   NaN         NaN         NaN
+13    林思敏   90    林思敏   90    林思敏   90    林思敏   90    林思敏   90    林思敏   90    林思敏   90   NaN   NaN         NaN         NaN
+14    卢椅群   90    卢椅群   90    卢椅群   90    卢椅群   90    卢椅群   90    黄绍标   90    卢椅群   90   NaN   NaN         NaN         NaN
+15    NaN  NaN    NaN  NaN    NaN  NaN    NaN  NaN    NaN  NaN    NaN  NaN    NaN  NaN   NaN   NaN         NaN         NaN
+16    NaN  NaN    NaN  NaN    NaN  NaN    NaN  NaN    NaN  NaN    NaN  NaN    NaN  NaN    合计   NaN         NaN         NaN
+17    NaN  270    NaN  270    NaN  270    NaN  270      0  270    NaN  270    NaN  270  1890   申请中         NaN         NaN

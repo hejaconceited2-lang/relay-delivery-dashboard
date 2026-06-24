@@ -1,0 +1,13 @@
+=== Payroll personnel → Station mapping ===
+
+卢椅群:
+  万科欧泊: 251单
+林思敏:
+  万科欧泊: 220单
+黄晓林:
+  万科欧泊: 146单
+黄绍标:
+  (未在配送数据中找到)
+
+=== Station headcount summary (6/23 or latest day) ===
+万科欧泊: 3人 → ['卢椅群', '林思敏', '黄晓林']
