@@ -146,7 +146,9 @@ def get_station_histories():
                      glob.glob(os.path.join(BASE_DIR, dd, '*.xlsx'))
         if not candidates:
             continue
-        df = pd.read_excel(candidates[0])
+        # 选最新修改时间的文件（与 find_xls 逻辑一致）
+        latest_file = max(candidates, key=os.path.getmtime)
+        df = pd.read_excel(latest_file)
         df = df[df['站点名称'].str.contains('分段履约', na=False)].copy()
         date_obj = datetime.strptime(f'20{dd[0:2]}-{dd[3:5]}-{dd[6:8]}', '%Y-%m-%d')
         date_display = date_obj.strftime('%m/%d')
