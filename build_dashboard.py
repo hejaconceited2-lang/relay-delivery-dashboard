@@ -318,7 +318,7 @@ def get_station_histories():
             s_done = (sdf['物流单状态'] == '已送达').sum()
             s_canc = (sdf['物流单状态'] == '已取消').sum()
             canc_comp = sdf.loc[sdf['物流单状态'] == '已取消', '订单实付'].sum()
-            cnt = (sdf['物流单状态'] != '已取消').sum()  # 真实单量，排除取消单
+            cnt = len(sdf)  # 总单量（含取消）
 
             riders = set()
             for col in rider_cols:
@@ -326,7 +326,8 @@ def get_station_histories():
                     for r in sdf[col].dropna():
                         riders.add(str(r).strip())
             registered = len(riders) or 0
-            per = cnt / registered if registered > 0 else 0
+            # 补贴考核：人均用已送达单量算
+            per = s_done / registered if registered > 0 else 0
             meets = per >= PER_PERSON_THRESHOLD if registered > 0 else False
             subsidy = (registered - 1) * SUBSIDY_PER_EXTRA if meets else 0
 
@@ -567,7 +568,7 @@ def build_station_tab(r, station_charts):
         onsite_color = '#64748b'
 
     return f"""
-    <div class="tab-panel" id="tab_{tab_id}" data-station="{short}" data-orders="{orders}" data-registered="{registered or 0}" data-onsite="{onsite_calc or 0}" data-onsite-confirmed="{1 if onsite_confirmed else 0}" data-ours="{1 if is_ours else 0}" data-canc-comp="{canc_comp or 0}" data-labor="{s_labor}" data-labor-source="{labor_source}" data-hours="{s_hours or HOURS_PER_PERSON}" data-rate="{s_rate or LABOR_RATE}">
+    <div class="tab-panel" id="tab_{tab_id}" data-station="{short}" data-orders="{orders}" data-done="{r['已完成']}" data-registered="{registered or 0}" data-onsite="{onsite_calc or 0}" data-onsite-confirmed="{1 if onsite_confirmed else 0}" data-ours="{1 if is_ours else 0}" data-canc-comp="{canc_comp or 0}" data-labor="{s_labor}" data-labor-source="{labor_source}" data-hours="{s_hours or HOURS_PER_PERSON}" data-rate="{s_rate or LABOR_RATE}">
         <a href="javascript:switchTab('overview')" class="back-link">&larr; 返回总览</a>
         <div class="kpi-grid">
             {kpi_card('订单量', orders, f"完成率 {r['完成率']}%", '#818cf8')}
@@ -745,8 +746,8 @@ def process_date(date_str):
     # 分类
     df['归属'] = df['站点名称'].apply(lambda s: '竞争方' if s in COMPETITORS else '我方')
 
-    # 全局汇总（真实单量：排除已取消）
-    total = (df['物流单状态'] != '已取消').sum()
+    # 全局汇总
+    total = len(df)
     ours = df[df['归属'] == '我方']
     comps = df[df['归属'] == '竞争方']
     done = (df['物流单状态'] == '已送达').sum()
@@ -764,12 +765,12 @@ def process_date(date_str):
         s_done = (sdf['物流单状态'] == '已送达').sum()
         s_canc = (sdf['物流单状态'] == '已取消').sum()
         s_pickup = (sdf['物流单状态'] == '已取货').sum()
-        cnt = (sdf['物流单状态'] != '已取消').sum()  # 真实单量，排除取消单
+        cnt = len(sdf)  # 总单量（含取消）
         grp = sdf['归属'].iloc[0]
         reg_count = registered.get(s)           # 系统登记人员
         ons_raw = onsite_staff.get(s)            # 真实点位人数（None=待确认）
         ons_count = ons_raw if ons_raw is not None else reg_count  # 计算时回退到系统登记
-        per_person = cnt / reg_count if reg_count else None  # 人均用真实单量算
+        per_person = s_done / reg_count if reg_count else None  # 人均用已送达单量算
 
         if reg_count and per_person:
             gap = 20 - per_person
@@ -1373,7 +1374,8 @@ function editRegistered(tabId, card) {{
 function recalcUE(tabId, registered) {{
     var panel = document.getElementById('tab_' + tabId);
     var orders = parseInt(panel.dataset.orders);
-    var perPerson = (orders / registered).toFixed(1);
+    var done = parseInt(panel.dataset.done) || 0;
+    var perPerson = (done / registered).toFixed(1);  // 补贴考核用已送达单量
     var meets = perPerson >= 20;
     // 真实人数：已确认则保持，否则回退到系统登记用于计算
     var onsiteConfirmed = parseInt(panel.dataset.onsiteConfirmed) || 0;
