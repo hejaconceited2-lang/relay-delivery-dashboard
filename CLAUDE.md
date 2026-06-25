@@ -1,0 +1,42 @@
+# 接力送 · 运营看板项目
+
+## 标准更新流程
+
+```bash
+# 1. 下载「校园订单详情」xls → 放入 26-06-XX/（只保留最新一份）
+# 2. 全量构建
+python build_dashboard.py YYYY-MM-DD --sync
+# 3. 推送（必须同时推 main 和 master）
+git add -A && git commit -m "数据更新至MM/DD"
+git push origin main:main && git push origin main:master
+```
+
+## 核心计算规则
+
+| 指标 | 公式 | 来源 |
+|------|------|------|
+| 结算 | 订单×2.5 | 客观 |
+| 补贴 | (系统登记-1)×80 | 系统登记 |
+| 人力 | 优先DAILY_LABOR_COST | 计薪表 |
+| 净利 | 结算+补贴-人力-赔偿 | 混合 |
+| 接力时长 | 骑手1经手→送达 | 客观 |
+
+## 人员
+- **系统登记** = 骑手2~N去重（自动）→ 补贴+人均用
+- **真实人数** = 计薪表按日确认 → 人力成本用
+
+## 占位符规则
+- 结算/补贴/赔偿：始终显示
+- 人力/净利：计薪表未覆盖时显示「—」
+
+## 页面结构
+- `index.html`：横比表(置顶) + 日期卡片 + 走势图 + 累计表(底)
+- `MMDD.html`：看板(站点KPI+利润线+走势图)
+- `MMDD_ue.html`：UE盈利分析
+
+## 数据目录
+- 订单：`26-06-XX/[新]校园订单详情_*.xls`
+- 计薪：`接力送真实人力计薪/接力送计薪表格.xlsx`
+- 配置：`build_dashboard.py` 顶部（动态从xlsx加载）
+- 解析器：`scripts/parse_payroll.py`
+- 拉取器：`scripts/fetch_tencent_doc.py`
