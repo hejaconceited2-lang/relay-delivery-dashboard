@@ -4,12 +4,17 @@
 
 ```bash
 # 1. 下载「校园订单详情」xls → 放入 26-06-XX/（只保留最新一份）
-# 2. 全量构建
+# 2. 更新计薪表（如需）→ 接力送真实人力计薪/接力送计薪表格.xlsx
+# 3. 全量构建
 python build_dashboard.py YYYY-MM-DD --sync
-# 3. 推送（必须同时推 main 和 master）
+# 4. 推送（必须同时推 main 和 master）
 git add -A && git commit -m "数据更新至MM/DD"
 git push origin main:main && git push origin main:master
 ```
+
+## 计薪表
+- 本地手动维护: `接力送真实人力计薪/接力送计薪表格.xlsx`
+- 不再从腾讯文档线上拉取 (--fetch-payroll 已废弃)
 
 ## 核心计算规则
 
@@ -39,4 +44,3 @@ git push origin main:main && git push origin main:master
 - 计薪：`接力送真实人力计薪/接力送计薪表格.xlsx`
 - 配置：`build_dashboard.py` 顶部（动态从xlsx加载）
 - 解析器：`scripts/parse_payroll.py`
-- 拉取器：`scripts/fetch_tencent_doc.py`

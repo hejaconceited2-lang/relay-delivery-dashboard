@@ -2,15 +2,17 @@
 接力送 · 运营看板 — 统一构建脚本
 用法:
   python build_dashboard.py 2026-06-18          # 构建指定日期
-  python build_dashboard.py 2026-06-18 --sync   # 拉取计薪表+构建(一键)
+  python build_dashboard.py 2026-06-18 --sync   # 同步本地计薪表+构建(一键)
   python build_dashboard.py --all               # 重建所有日期
   python build_dashboard.py --update-index      # 仅更新总主页
-  python build_dashboard.py --fetch-payroll     # 从腾讯文档拉取最新计薪表
+
+计薪表: 本地手动维护 接力送真实人力计薪/接力送计薪表格.xlsx, 不再从腾讯文档拉取
 
 标准更新流程:
   1. 下载订单xls → 放入 26-06-XX/ 目录
-  2. python build_dashboard.py 2026-06-XX --sync
-  3. git add -A && git commit && git push
+  2. 更新计薪表 (如需) → 接力送真实人力计薪/接力送计薪表格.xlsx
+  3. python build_dashboard.py 2026-06-XX --sync
+  4. git add -A && git commit && git push
 """
 import pandas as pd
 import numpy as np
@@ -2550,11 +2552,8 @@ if __name__ == '__main__':
     sync_mode = '--sync' in sys.argv
 
     if sync_mode and arg not in ('--all', '--update-index', '--fetch-payroll'):
-        # 拉取计薪表后再构建
-        import subprocess
-        print('>>> 拉取腾讯文档计薪表...')
-        script = os.path.join(BASE_DIR, 'scripts', 'fetch_tencent_doc.py')
-        subprocess.run([sys.executable, script], check=True)
+        # 同步本地计薪表 (本地手动维护, 不再拉取腾讯文档)
+        print('>>> 读取本地计薪表...')
         print()
 
     if arg == '--all':
@@ -2574,9 +2573,8 @@ if __name__ == '__main__':
         update_index(summaries)
 
     elif arg == '--fetch-payroll':
-        import subprocess
-        script = os.path.join(BASE_DIR, 'scripts', 'fetch_tencent_doc.py')
-        subprocess.run([sys.executable, script], check=True)
+        print('已废弃: 计薪表改为本地手动维护, 不再从腾讯文档拉取。')
+        print(f'请直接编辑: 接力送真实人力计薪/接力送计薪表格.xlsx')
 
     elif arg == '--update-index':
         dates = discover_dates()
