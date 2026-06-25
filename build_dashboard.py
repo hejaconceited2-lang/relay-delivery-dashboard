@@ -315,10 +315,10 @@ def get_station_histories():
             if s in COMPETITORS:
                 continue
             sdf = df[df['站点名称'] == s]
-            cnt = len(sdf)
             s_done = (sdf['物流单状态'] == '已送达').sum()
             s_canc = (sdf['物流单状态'] == '已取消').sum()
             canc_comp = sdf.loc[sdf['物流单状态'] == '已取消', '订单实付'].sum()
+            cnt = (sdf['物流单状态'] != '已取消').sum()  # 真实单量，排除取消单
 
             riders = set()
             for col in rider_cols:
@@ -745,8 +745,8 @@ def process_date(date_str):
     # 分类
     df['归属'] = df['站点名称'].apply(lambda s: '竞争方' if s in COMPETITORS else '我方')
 
-    # 全局汇总
-    total = len(df)
+    # 全局汇总（真实单量：排除已取消）
+    total = (df['物流单状态'] != '已取消').sum()
     ours = df[df['归属'] == '我方']
     comps = df[df['归属'] == '竞争方']
     done = (df['物流单状态'] == '已送达').sum()
@@ -761,15 +761,15 @@ def process_date(date_str):
     station_rows = []
     for s in df['站点名称'].unique():
         sdf = df[df['站点名称'] == s]
-        cnt = len(sdf)
         s_done = (sdf['物流单状态'] == '已送达').sum()
         s_canc = (sdf['物流单状态'] == '已取消').sum()
         s_pickup = (sdf['物流单状态'] == '已取货').sum()
+        cnt = (sdf['物流单状态'] != '已取消').sum()  # 真实单量，排除取消单
         grp = sdf['归属'].iloc[0]
         reg_count = registered.get(s)           # 系统登记人员
         ons_raw = onsite_staff.get(s)            # 真实点位人数（None=待确认）
         ons_count = ons_raw if ons_raw is not None else reg_count  # 计算时回退到系统登记
-        per_person = cnt / reg_count if reg_count else None  # 人均用系统登记算
+        per_person = cnt / reg_count if reg_count else None  # 人均用真实单量算
 
         if reg_count and per_person:
             gap = 20 - per_person
@@ -1567,6 +1567,7 @@ function exportRegisteredConfig() {{
                 '站点': r['站点'],
                 '归属': grp,
                 '订单量': cnt,
+                '已完成': r['已完成'],
                 '系统登记': reg_count,
                 '真实人数': ons_count,
                 '真实人数已确认': ons_confirmed,
@@ -1988,7 +1989,7 @@ def update_index(dates_summary):
                                    'onsite': sp.get('真实人数', 0),
                                    'onsite_confirmed': sp.get('真实人数已确认', False)}
             station_cum[sn]['orders'] += sp['订单量']
-            station_cum[sn]['done'] += sp['订单量'] - sp.get('已取消', 0)
+            station_cum[sn]['done'] += sp.get('已完成', 0)  # 已完成=已送达; 订单量已排除取消, 直接取已完成字段
             station_cum[sn]['canc'] += sp.get('已取消', 0)
             station_cum[sn]['days'] += 1
             station_cum[sn]['profit'] += (sp.get('净利') or 0)
@@ -2010,7 +2011,8 @@ def update_index(dates_summary):
         reg = sp['系统登记']
         onsite = sp['真实人数']
         per = sp['人均单量']
-        done_pct = (orders - sp.get('已取消', 0)) / orders * 100 if orders > 0 else 0
+        completed = sp.get('已完成', orders - sp.get('已取消', 0))
+        done_pct = completed / orders * 100 if orders > 0 else 0
         relay_str = '—'
 
         # 达标判断
