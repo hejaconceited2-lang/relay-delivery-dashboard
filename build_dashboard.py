@@ -1995,7 +1995,73 @@ def update_index(dates_summary):
             station_cum[sn]['labor'] += (sp.get('人力成本') or 0)
             station_cum[sn]['canc_comp'] += (sp.get('取消赔偿') or 0)
 
-    # Sort by cumulative orders descending
+    # ── 最新一天各站点横比表 ──
+    latest_summary = dates_summary[0]
+    latest_profits = latest_summary.get('station_profits', [])
+    # Sort by orders descending
+    latest_profits_sorted = sorted(latest_profits, key=lambda x: x['订单量'], reverse=True)
+
+    compare_rows = ''
+    for sp in latest_profits_sorted:
+        conf = sp.get('真实人数已确认', False)
+        orders = sp['订单量']
+        reg = sp['系统登记']
+        onsite = sp['真实人数']
+        per = sp['人均单量']
+        done_pct = (orders - sp.get('已取消', 0)) / orders * 100 if orders > 0 else 0
+        relay_str = '—'
+
+        # 达标判断
+        if per and per >= 20:
+            badge = '<span class="badge badge-green">达标</span>'
+            gap_str = f'+{per-20:.0f}'
+        elif per:
+            badge = '<span class="badge badge-red">未达标</span>'
+            gap_str = f'-{20-per:.0f}'
+        else:
+            badge = '<span class="badge badge-gray">?</span>'
+            gap_str = '?'
+
+        onsite_str = f'{onsite}人' if conf else '<span style="color:#64748b">待确认</span>'
+        labor_str = f'-¥{sp["人力成本"]:,.0f}' if sp['人力成本'] is not None else '<span style="color:#64748b">—</span>'
+        profit_str = f'¥{sp["净利"]:+,.0f}' if sp['净利'] is not None else '<span style="color:#64748b">—</span>'
+        subsidy_str = f'+¥{sp["补贴"]:.0f}' if sp['补贴'] > 0 else '¥0'
+        comp_str = f'-¥{sp.get("取消赔偿",0):,.0f}' if sp.get('取消赔偿', 0) > 0 else '¥0'
+        pc = '#34d399' if (sp['净利'] or 0) >= 0 else '#f87171'
+
+        compare_rows += f"""
+              <tr>
+                <td style="color:var(--text);font-weight:500">{sp['站点']}</td>
+                <td style="color:#818cf8;font-weight:600">{orders}</td>
+                <td style="color:var(--text-dim)">{done_pct:.0f}%</td>
+                <td style="color:#a78bfa">{reg}人</td>
+                <td style="color:{('#34d399' if conf else '#64748b')}">{onsite_str}</td>
+                <td style="color:var(--text-dim)">{per}单/人</td>
+                <td><b style="color:{'#34d399' if per and per>=20 else '#f87171'}">{gap_str}</b></td>
+                <td>{badge}</td>
+                <td style="color:#34d399">¥{sp['结算收入']:,.0f}</td>
+                <td style="color:{('#f87171' if conf else '#64748b')}">{labor_str}</td>
+                <td style="color:#fbbf24">{subsidy_str}</td>
+                <td style="color:#f87171">{comp_str}</td>
+                <td style="color:{pc};font-weight:700">{profit_str}</td>
+              </tr>"""
+
+    compare_table_html = f"""
+      <div class="section-chart" style="margin-bottom:20px;">
+        <h2>📊 最新一天 · 各站点横比（{latest_summary['date']}）</h2>
+        <div style="max-height:500px;overflow:auto;">
+        <table>
+          <thead><tr>
+            <th>站点</th><th>单量</th><th>完成率</th><th>登记</th><th>真实人数</th>
+            <th>人均</th><th>距20</th><th>达标</th>
+            <th>结算</th><th>人力</th><th>补贴</th><th>赔偿</th><th>净利</th>
+          </tr></thead>
+          <tbody>{compare_rows}</tbody>
+        </table>
+        </div>
+      </div>"""
+
+    # ── 站点累计汇总（下移到日期卡片之后）──
     cum_sorted = sorted(station_cum.items(), key=lambda x: x[1]['orders'], reverse=True)
 
     cum_rows = ''
@@ -2428,13 +2494,14 @@ tr:hover td {{ background: rgba(129,140,248,0.04); }}
       <div class="value" style="color:#fbbf24;font-size:14px;">{latest_date[5:]}</div>
     </div>
   </div>
-{cum_table_html}
+{compare_table_html}
   <div class="main-layout">
     <div class="main-cards">
 {cards_html}
     </div>
 {trends_html}
   </div>
+{cum_table_html}
   <div class="footer">
     接力送 &middot; 楼宇末端配送运营数据 &nbsp;|&nbsp; 数据来源: 美团校园订单详情导出
   </div>
