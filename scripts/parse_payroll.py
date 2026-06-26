@@ -77,12 +77,14 @@ def parse_single_sheet(df, station):
             if '物料保管' in name_s:  # 报销非人工
                 continue
 
+            if isinstance(salary_val, datetime):
+                continue  # 跳过日期误填的单元格
             try:
                 sal = float(salary_val)
                 if sal >= 45:  # 最小工时1.5h×30=45, 过滤≤20报销
                     total_salary += sal
                     names.append(name_s)
-            except ValueError:
+            except (ValueError, TypeError):
                 pass
 
         if total_salary > 0:
