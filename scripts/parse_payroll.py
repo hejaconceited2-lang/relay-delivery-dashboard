@@ -35,14 +35,14 @@ SHEET_MAP = {
     '中大附三岭南医院': '分段履约广州中大附三岭南医院',
 }
 
-SKIP_NAMES = {'人员', '薪资', '合计', 'nan', '', '申请中', '已结清', '已申请'}
+SKIP_NAMES = {'人员', '薪资', '合计', 'nan', '', '申请中', '已结清', '已申请', '上午', '下午'}
 
 def parse_single_sheet(df, station):
     """解析单个子表, 返回 (daily_labor, daily_headcount)"""
     daily_labor = {}
     daily_headcount = {}
 
-    # 1. 找所有日期单元格
+    # 1. 找所有日期单元格 → 同时按列分组，找出每个日期在同列的下一个日期
     date_cells = []  # [(row, col, datetime)]
     for r in range(len(df)):
         for c in range(df.shape[1]):
@@ -50,20 +50,33 @@ def parse_single_sheet(df, station):
             if dt and dt.year == 2026:
                 date_cells.append((r, c, dt))
 
-    # 2. 对每个日期列, 提取该列下方所有有效薪资行
+    # 按列构建 (col) → [(row, dt)] 用于找"下一个日期"
+    col_dates = {}
+    for r, c, dt in date_cells:
+        col_dates.setdefault(c, []).append((r, dt))
+    for c in col_dates:
+        col_dates[c].sort(key=lambda x: x[0])
+
+    # 2. 对每个日期, 向下扫描直到同列的下一个日期行（或空行/EOF）
     for r_date, c_date, dt in date_cells:
         date_str = dt.strftime('%Y-%m-%d')
         total_salary = 0
         names = []
 
-        # 从日期行下方开始扫描, 直到遇到空行或下一个日期
-        for row in range(r_date + 1, r_date + 25):
-            if row >= len(df): break
+        # 找同列的下一个日期行作为扫描上限
+        next_date_row = len(df)
+        same_col = col_dates.get(c_date, [])
+        for r_next, _ in same_col:
+            if r_next > r_date:
+                next_date_row = r_next
+                break
 
+        # 扫描：从日期行下一行到下个日期行之前
+        for row in range(r_date + 1, next_date_row):
             name_val = df.iloc[row, c_date]
             salary_val = df.iloc[row, c_date + 1]
 
-            # 遇空行(整行为空)则停止
+            # 遇整行空白则停止（块间距）
             row_all_nan = all(pd.isna(df.iloc[row, c]) for c in range(min(18, df.shape[1])))
             if row_all_nan and total_salary > 0:
                 break
@@ -74,14 +87,16 @@ def parse_single_sheet(df, station):
             name_s = str(name_val).strip()
             if not name_s or name_s in SKIP_NAMES or name_s.startswith('Unnamed'):
                 continue
-            if '物料保管' in name_s:  # 报销非人工
+            if '物料保管' in name_s:
+                continue
+            if '合计' in name_s:
                 continue
 
             if isinstance(salary_val, datetime):
-                continue  # 跳过日期误填的单元格
+                continue
             try:
                 sal = float(salary_val)
-                if sal >= 45:  # 最小工时1.5h×30=45, 过滤≤20报销
+                if sal >= 45:
                     total_salary += sal
                     names.append(name_s)
             except (ValueError, TypeError):
@@ -108,11 +123,15 @@ def parse_payroll(filepath):
         df = pd.read_excel(xls, sheet_name=sheet_name, engine='calamine', header=None)
         dl, dh = parse_single_sheet(df, station)
 
-        # 合并到全局
+        # 合并到全局（同站点多个sheet时累加）
         for d, ss in dl.items():
-            daily_labor.setdefault(d, {}).update(ss)
+            target = daily_labor.setdefault(d, {})
+            for st, v in ss.items():
+                target[st] = target.get(st, 0) + v
         for d, ss in dh.items():
-            daily_headcount.setdefault(d, {}).update(ss)
+            target = daily_headcount.setdefault(d, {})
+            for st, v in ss.items():
+                target[st] = target.get(st, 0) + v
 
     # 构建 actual_staff (取每个站点的最常见人数)
     actual_staff = {}
