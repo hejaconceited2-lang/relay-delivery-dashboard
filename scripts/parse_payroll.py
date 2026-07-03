@@ -57,7 +57,7 @@ def parse_single_sheet(df, station):
     for c in col_dates:
         col_dates[c].sort(key=lambda x: x[0])
 
-    # 2. 对每个日期, 向下扫描直到同列的下一个日期行（或空行/EOF）
+    # 2. 对每个日期, 向下扫描直到同列的下一个日期行（或 EOF）
     for r_date, c_date, dt in date_cells:
         date_str = dt.strftime('%Y-%m-%d')
         total_salary = 0
@@ -76,12 +76,11 @@ def parse_single_sheet(df, station):
             name_val = df.iloc[row, c_date]
             salary_val = df.iloc[row, c_date + 1]
 
-            # 遇整行空白则停止（块间距）
-            row_all_nan = all(pd.isna(df.iloc[row, c]) for c in range(min(18, df.shape[1])))
-            if row_all_nan and total_salary > 0:
-                break
-
             if pd.isna(name_val) or pd.isna(salary_val):
+                continue
+
+            # 跳过数字名（合计行的 0 标记等）
+            if isinstance(name_val, (int, float)):
                 continue
 
             name_s = str(name_val).strip()
