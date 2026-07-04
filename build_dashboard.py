@@ -1,8 +1,9 @@
 """
 接力送 · 运营看板 — 统一构建脚本
 用法:
-  python build_dashboard.py 2026-06-18          # 构建指定日期
-  python build_dashboard.py 2026-06-18 --sync   # 同步本地计薪表+构建(一键)
+  python build_dashboard.py 2026-06-18          # 构建指定日期(增量)
+  python build_dashboard.py 2026-06-18 --sync   # 同步本地计薪表+构建(增量)
+  python build_dashboard.py 2026-06-18 --full   # 全量重建所有日期
   python build_dashboard.py --all               # 重建所有日期
   python build_dashboard.py --update-index      # 仅更新总主页
 
@@ -1965,6 +1966,45 @@ tr:hover td {{ background:rgba(129,140,248,0.04); }}
     print(f'  [OK] {os.path.basename(ue_path)} (UE analysis)')
 
 
+def save_summary_cache(summaries, path='_summary_cache.json'):
+    """将日期摘要存入缓存文件"""
+    import json
+    cache = {}
+    for s in summaries:
+        cache[s['date']] = serialize_summary(s)
+    with open(path, 'w', encoding='utf-8') as f:
+        json.dump(cache, f, ensure_ascii=False, default=str)
+
+
+def load_summary_cache(path='_summary_cache.json'):
+    """读取缓存的日期摘要"""
+    import json
+    if not os.path.exists(path):
+        return {}
+    with open(path, 'r', encoding='utf-8') as f:
+        raw = json.load(f)
+    cache = {}
+    for date_str, data in raw.items():
+        cache[date_str] = deserialize_summary(data)
+    return cache
+
+
+def serialize_summary(s):
+    """把 summary dict 转为 JSON-safe dict"""
+    out = {}
+    for k, v in s.items():
+        if k == 'station_profits':
+            out[k] = [{sk: sv for sk, sv in sp.items()} for sp in v]
+        else:
+            out[k] = v
+    return out
+
+
+def deserialize_summary(data):
+    """从 JSON-safe dict 还原 summary"""
+    return data
+
+
 def update_index(dates_summary):
     """根据所有日期摘要更新根目录 index.html 总主页"""
     # 按日期排序
@@ -2555,18 +2595,19 @@ if __name__ == '__main__':
 
     arg = sys.argv[1]
     sync_mode = '--sync' in sys.argv
+    full_mode = '--full' in sys.argv
 
     if sync_mode and arg not in ('--all', '--update-index', '--fetch-payroll'):
-        # 同步本地计薪表 (本地手动维护, 不再拉取腾讯文档)
         print('>>> 读取本地计薪表...')
         print()
 
-    if arg == '--all':
+    if arg == '--all' or full_mode:
+        # 全量模式：重建所有日期
         dates = discover_dates()
         if not dates:
             print('未发现任何日期目录。')
             sys.exit(1)
-        print(f'重建 {len(dates)} 个日期的看板...\n')
+        print(f'全量重建 {len(dates)} 个日期的看板...\n')
         summaries = []
         for d in dates:
             try:
@@ -2576,6 +2617,8 @@ if __name__ == '__main__':
                 print(f'  [{d}] 错误: {e}')
         print()
         update_index(summaries)
+        save_summary_cache(summaries)
+        print(f'[OK] 全量完成，缓存已更新 ({len(summaries)}天)')
 
     elif arg == '--fetch-payroll':
         print('已废弃: 计薪表改为本地手动维护, 不再从腾讯文档拉取。')
@@ -2593,23 +2636,39 @@ if __name__ == '__main__':
                 print(f'  [{d}] 跳过: {e}')
         print()
         update_index(summaries)
+        save_summary_cache(summaries)
 
     else:
-        # 单日期模式
+        # 增量模式：只处理指定日期，其余从缓存读取
         date_str = arg
-        try:
-            summary = process_date(date_str)
-            summaries = [summary]
-            for d in discover_dates():
-                if d == date_str:
-                    continue
+        cache = load_summary_cache()
+
+        summary = process_date(date_str)
+        summaries = [summary]
+
+        all_dates = discover_dates()
+        cached_count = 0
+        rebuilt_count = 0
+        for d in all_dates:
+            if d == date_str:
+                continue
+            if d in cache:
+                summaries.append(cache[d])
+                cached_count += 1
+            else:
                 try:
                     s = process_date(d)
                     summaries.append(s)
+                    rebuilt_count += 1
                 except Exception as e:
                     print(f'  [{d}] 跳过: {e}')
-            print()
-            update_index(summaries)
-        except Exception as e:
-            print(f'错误: {e}')
-            sys.exit(1)
+
+        line = f'[增量] 处理 1 天'
+        if cached_count:
+            line += f' + 缓存 {cached_count} 天'
+        if rebuilt_count:
+            line += f' + 重建 {rebuilt_count} 天'
+        line += f' (共 {len(summaries)} 天)'
+        print(line)
+        update_index(summaries)
+        save_summary_cache(summaries)
