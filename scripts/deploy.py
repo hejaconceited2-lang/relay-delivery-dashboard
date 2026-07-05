@@ -10,19 +10,21 @@
 import subprocess, sys, time, os
 
 MAX_WAIT_SEC = 120
-STUCK_THRESHOLD = 30  # 30s 无进展视为卡住
+STUCK_THRESHOLD = 30
 MAX_RETRIES = 2
 
 REPO = 'hejaconceited2-lang/relay-delivery-dashboard'
 GIT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+# Windows TLS workaround
+GIT_SSL = '-c http.sslVerify=false'
 
 def run(cmd, cwd=None):
     """Run shell command, return (returncode, stdout, stderr)."""
     result = subprocess.run(
         cmd, shell=True, capture_output=True, text=True,
         encoding='utf-8', errors='replace',
-        cwd=cwd or GIT_DIR,
-        env={**os.environ, 'GIT_SSL_NO_VERIFY': 'true'}
+        cwd=cwd or GIT_DIR
     )
     stdout = (result.stdout or '').strip()
     stderr = (result.stderr or '').strip()
@@ -49,32 +51,31 @@ def get_build_status():
 
 def deploy(commit_msg):
     # Step 1: Git push
-    print('[1/3] 推送代码...')
-    code, _, err = run(f'git add -A')
+    print('[1/3] Pushing code...')
+    code, _, err = run(f'git {GIT_SSL} add -A')
     if code != 0:
-        print(f'  git add 失败: {err}')
+        print(f'  git add failed: {err}')
         return False
 
-    code, _, err = run(f'git commit -m "{commit_msg}"')
-    # commit 可能无变更 (nothing to commit)
+    code, _, err = run(f'git {GIT_SSL} commit -m "{commit_msg}"')
     if code != 0 and 'nothing to commit' not in err:
-        print(f'  git commit 失败: {err}')
+        print(f'  git commit failed: {err}')
         return False
 
-    code, _, err = run(f'git push origin main:main')
+    code, _, err = run(f'git {GIT_SSL} push origin main:main')
     if code != 0:
-        print(f'  push main 失败: {err}')
+        print(f'  push main failed: {err}')
         return False
 
-    code, _, err = run(f'git push origin main:master')
+    code, _, err = run(f'git {GIT_SSL} push origin main:master')
     if code != 0:
-        print(f'  push master 失败: {err}')
+        print(f'  push master failed: {err}')
         return False
 
-    print('  推送完成.')
+    print('  Push done.')
 
     # Step 2: Wait for Pages build
-    print('[2/3] 等待 Pages 构建...')
+    print('[2/3] Waiting for Pages build...')
     waited = 0
     last_commit = None
 
@@ -84,20 +85,20 @@ def deploy(commit_msg):
         status, build_commit = get_build_status()
 
         if status is None:
-            print(f'  [{waited}s] 无法查询状态，继续等待...')
+            print(f'  [{waited}s] Cannot query status, retrying...')
             continue
 
         if status == 'built':
-            print(f'  [{waited}s] ✓ Pages 构建成功')
+            print(f'  [{waited}s] Pages build SUCCESS')
             return True
 
         if status == 'errored':
-            print(f'  [{waited}s] ✗ Pages 构建失败')
+            print(f'  [{waited}s] Pages build FAILED')
             error_info = gh_api(f'repos/{REPO}/pages/builds/latest')
-            print(f'  错误详情: {error_info}')
+            print(f'  Error: {error_info}')
             return False
 
-        # Building — check if stuck (same commit for too long)
+        # Building - check if stuck
         if build_commit != last_commit:
             last_commit = build_commit
             stuck_time = 0
@@ -105,36 +106,34 @@ def deploy(commit_msg):
             stuck_time += 5
 
         if stuck_time >= STUCK_THRESHOLD:
-            print(f'  [{waited}s] 构建卡住 (>30s 无进展)，需要重试')
+            print(f'  [{waited}s] Build stuck (>30s no progress), retrying...')
             return 'stuck'
 
         if waited <= 15 or waited % 15 == 0:
-            print(f'  [{waited}s] 构建中...')
+            print(f'  [{waited}s] Building...')
 
-    print(f'  [{waited}s] 构建超时，需要重试')
+    print(f'  [{waited}s] Build timeout, retrying...')
     return 'stuck'
 
 def main():
-    commit_msg = sys.argv[1] if len(sys.argv) > 1 else '数据更新'
+    commit_msg = sys.argv[1] if len(sys.argv) > 1 else 'data update'
 
     for attempt in range(MAX_RETRIES + 1):
         if attempt > 0:
-            print(f'\n[重试 {attempt}/{MAX_RETRIES}]')
-            # 空 commit 重触发
-            run('git commit --allow-empty -m "retry pages"')
-            run('git push origin main:main')
-            run('git push origin main:master')
+            print(f'\n[Retry {attempt}/{MAX_RETRIES}]')
+            run(f'git {GIT_SSL} commit --allow-empty -m "retry pages"')
+            run(f'git {GIT_SSL} push origin main:main')
+            run(f'git {GIT_SSL} push origin main:master')
 
         result = deploy(commit_msg)
         if result is True:
-            print('\n[3/3] ✓ 线上部署完成')
+            print('\n[3/3] Deploy SUCCESS')
             return
         elif result is False:
-            print(f'\n✗ 部署失败')
+            print('\nDeploy FAILED')
             sys.exit(1)
-        # result == 'stuck' → retry
 
-    print(f'\n✗ 重试 {MAX_RETRIES} 次后仍未成功，请手动检查')
+    print(f'\nDeploy FAILED after {MAX_RETRIES} retries, please check manually')
     sys.exit(1)
 
 if __name__ == '__main__':
