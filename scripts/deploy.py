@@ -17,13 +17,16 @@ REPO = 'hejaconceited2-lang/relay-delivery-dashboard'
 GIT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 def run(cmd, cwd=None):
-    """Run shell command, return (returncode, stdout)."""
+    """Run shell command, return (returncode, stdout, stderr)."""
     result = subprocess.run(
         cmd, shell=True, capture_output=True, text=True,
+        encoding='utf-8', errors='replace',
         cwd=cwd or GIT_DIR,
         env={**os.environ, 'GIT_SSL_NO_VERIFY': 'true'}
     )
-    return result.returncode, result.stdout.strip(), result.stderr.strip()
+    stdout = (result.stdout or '').strip()
+    stderr = (result.stderr or '').strip()
+    return result.returncode, stdout, stderr
 
 def gh_api(path):
     """Call gh api, return JSON string or None."""
