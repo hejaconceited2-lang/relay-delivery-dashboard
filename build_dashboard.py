@@ -2562,7 +2562,9 @@ tr:hover td {{ background: rgba(129,140,248,0.04); }}
         f.write(index_html)
 
     print(f'\n[OK] 总主页已更新: {total_orders:,}单 / {num_dates}天 / {max_stations}站')
-    print(f'  git add -A && git commit -m "数据更新至{latest_date[-5:]}" && git push')
+    print(f'')
+    print(f'  # 推送 + 验证线上部署:')
+    print(f'  python scripts/deploy.py 数据更新至{latest_date[-5:]}')
 
 
 def discover_dates():

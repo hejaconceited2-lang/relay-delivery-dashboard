@@ -7,13 +7,17 @@
 # 2. 更新计薪表（如需）→ 接力送真实人力计薪/接力送计薪表格.xlsx
 # 3. 增量构建（默认，只处理当天+index.html，~6文件）
 python build_dashboard.py YYYY-MM-DD --sync
-# 4. 推送（必须同时推 main 和 master）
-git add -A && git commit -m "数据更新至MM/DD"
-GIT_SSL_NO_VERIFY=true git push origin main:main && git push origin main:master
+# 4. 部署上线（推送 + 验证 Pages 构建 + 卡住自动重试）
+python scripts/deploy.py "数据更新至MM/DD"
 
 # 计薪表变更影响多天时，使用全量重建：
 python build_dashboard.py YYYY-MM-DD --sync --full
 ```
+
+## 部署说明
+- `scripts/deploy.py` 推送后自动轮询 Pages 构建状态
+- 如构建卡住超过 30s 无进展，自动空 commit 重试（最多 2 次）
+- GitHub Pages 偶发构建卡死是已知问题，重新触发即可恢复
 
 ## 计薪表
 - 本地手动维护: `接力送真实人力计薪/接力送计薪表格.xlsx`
