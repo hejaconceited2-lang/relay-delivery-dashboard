@@ -16,15 +16,13 @@ MAX_RETRIES = 2
 REPO = 'hejaconceited2-lang/relay-delivery-dashboard'
 GIT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-# Windows TLS workaround
-GIT_SSL = '-c http.sslVerify=false'
-
 def run(cmd, cwd=None):
     """Run shell command, return (returncode, stdout, stderr)."""
+    env = {**os.environ, 'GIT_SSL_NO_VERIFY': 'true'}
     result = subprocess.run(
         cmd, shell=True, capture_output=True, text=True,
         encoding='utf-8', errors='replace',
-        cwd=cwd or GIT_DIR
+        cwd=cwd or GIT_DIR, env=env
     )
     stdout = (result.stdout or '').strip()
     stderr = (result.stderr or '').strip()
@@ -52,22 +50,22 @@ def get_build_status():
 def deploy(commit_msg):
     # Step 1: Git push
     print('[1/3] Pushing code...')
-    code, _, err = run(f'git {GIT_SSL} add -A')
+    code, _, err = run(f'git add -A')
     if code != 0:
         print(f'  git add failed: {err}')
         return False
 
-    code, _, err = run(f'git {GIT_SSL} commit -m "{commit_msg}"')
+    code, _, err = run(f'git commit -m "{commit_msg}"')
     if code != 0 and 'nothing to commit' not in err:
         print(f'  git commit failed: {err}')
         return False
 
-    code, _, err = run(f'git {GIT_SSL} push origin main:main')
+    code, _, err = run(f'git push origin main:main')
     if code != 0:
         print(f'  push main failed: {err}')
         return False
 
-    code, _, err = run(f'git {GIT_SSL} push origin main:master')
+    code, _, err = run(f'git push origin main:master')
     if code != 0:
         print(f'  push master failed: {err}')
         return False
@@ -121,9 +119,9 @@ def main():
     for attempt in range(MAX_RETRIES + 1):
         if attempt > 0:
             print(f'\n[Retry {attempt}/{MAX_RETRIES}]')
-            run(f'git {GIT_SSL} commit --allow-empty -m "retry pages"')
-            run(f'git {GIT_SSL} push origin main:main')
-            run(f'git {GIT_SSL} push origin main:master')
+            run(f'git commit --allow-empty -m "retry pages"')
+            run(f'git push origin main:main')
+            run(f'git push origin main:master')
 
         result = deploy(commit_msg)
         if result is True:
