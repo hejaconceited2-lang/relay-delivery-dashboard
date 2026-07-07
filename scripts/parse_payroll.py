@@ -58,6 +58,9 @@ def parse_single_sheet(df, station):
     for c in col_dates:
         col_dates[c].sort(key=lambda x: x[0])
 
+    # 所有含日期的行号，用于跨block边界检测
+    date_rows = set(r for r, c, dt in date_cells)
+
     # 2. 对每个日期, 向下扫描直到同列的下一个日期行（或 EOF）
     for r_date, c_date, dt in date_cells:
         date_str = dt.strftime('%Y-%m-%d')
@@ -74,6 +77,10 @@ def parse_single_sheet(df, station):
 
         # 扫描：从日期行下一行到下个日期行之前
         for row in range(r_date + 1, next_date_row):
+            # 跨block边界检测：遇到其他日期行（上下层列偏移产生的序列号日期）停止
+            if row in date_rows:
+                break
+
             name_val = df.iloc[row, c_date]
             salary_val = df.iloc[row, c_date + 1]
 
