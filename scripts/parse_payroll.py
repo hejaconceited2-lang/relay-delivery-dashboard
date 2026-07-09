@@ -1,6 +1,10 @@
 """
 计薪表解析: 从接力送计薪表格.xlsx 提取每日实际人力成本和人数
 """
+import sys
+import io
+if hasattr(sys.stdout, 'buffer'):
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 import pandas as pd
 import os, re
 from datetime import datetime, timedelta

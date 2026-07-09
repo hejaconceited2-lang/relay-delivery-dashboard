@@ -15,6 +15,11 @@
   3. python build_dashboard.py 2026-06-XX --sync
   4. git add -A && git commit && git push
 """
+import sys
+import io
+# 强制 stdout 使用 UTF-8，避免 Windows GBK 环境下中文乱码
+if hasattr(sys.stdout, 'buffer'):
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
