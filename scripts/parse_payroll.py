@@ -3,8 +3,8 @@
 """
 import sys
 import io
-if hasattr(sys.stdout, 'buffer'):
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8')
 import pandas as pd
 import os, re
 from datetime import datetime, timedelta

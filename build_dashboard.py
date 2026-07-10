@@ -18,8 +18,8 @@
 import sys
 import io
 # 强制 stdout 使用 UTF-8，避免 Windows GBK 环境下中文乱码
-if hasattr(sys.stdout, 'buffer'):
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8')
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
