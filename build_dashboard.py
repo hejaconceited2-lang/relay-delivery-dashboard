@@ -152,6 +152,7 @@ HOURS_PER_PERSON = 3       # 人均日工时 h
 MATERIAL_PER_STATION = 0       # 物料摊销 元/天/站 (暂不计入, 待确认口径)
 SUBSIDY_PER_EXTRA = 80     # 补贴 (T-1)x80 元/天
 PER_PERSON_THRESHOLD = 20  # 补贴门槛 人均单量
+MIN_RIDER_APPEARANCES = 3  # 系统登记最低出现次数: 当天在骑手2~N中出现>=此数才算有效人员
 
 # 每日实际人工成本（基于计薪表，优先于 人数×工时×时薪 公式）
 # 格式: {"YYYY-MM-DD": {站点全名: 总薪资}}
@@ -721,11 +722,15 @@ def process_date(date_str):
             onsite_staff[s] = None  # 竞争方无真实人数数据
             continue
         sdf = df[df['站点名称'] == s]
-        riders = set()
+        from collections import Counter
+        rider_counts = Counter()
         for col in rider_cols:
             if col in df.columns:
                 for r in sdf[col].dropna():
-                    riders.add(str(r).strip())
+                    rider_counts[str(r).strip()] += 1
+        # 只统计出现次数 >= 阈值的有效骑手, 过滤1-2次的临时/异常人员
+        riders = {name for name, count in rider_counts.items() if count >= MIN_RIDER_APPEARANCES}
+        all_riders = set(rider_counts.keys())
         detected = len(riders)
         configured = registered.get(s)
 
@@ -735,7 +740,9 @@ def process_date(date_str):
             registered_detail[s] = riders
             if configured and detected != configured:
                 names = '、'.join(sorted(riders))
-                print(f'  [登记更新] {s.replace("分段履约广州","")}: {configured}→{detected}人 — {names}')
+                skipped = len(all_riders) - len(riders)
+                skip_note = f' (过滤{skipped}个低频)' if skipped > 0 else ''
+                print(f'  [登记更新] {s.replace("分段履约广州","")}: {configured}→{detected}人 — {names}{skip_note}')
         elif not configured:
             registered[s] = 0
             registered_detail[s] = set()
