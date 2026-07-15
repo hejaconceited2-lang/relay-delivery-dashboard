@@ -670,7 +670,7 @@ def process_date(date_str):
     df['下单时间_dt'] = pd.to_datetime(df['下单时间'], errors='coerce')
     df['送达时间_dt'] = pd.to_datetime(df['送达时间'], errors='coerce')
     df['骑手1经手_dt'] = pd.to_datetime(df['骑手1经手时间'], errors='coerce')
-    df['hour'] = df['骑手1经手_dt'].dt.hour
+    df['hour'] = df['骑手1经手_dt'].dt.hour.astype('Int64')
     df['arrival_hour'] = df['骑手1经手_dt'].dt.hour.astype('Int64')  # 到达点位时段
     df['delivery_hour'] = df['送达时间_dt'].dt.hour.astype('Int64')   # 送达时段
     mask_done = df['送达时间_dt'].notna()
