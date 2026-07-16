@@ -59,6 +59,9 @@ KNOWN_REGISTERED = {
     '分段履约广州云升科技园': 2,
 }
 
+# 系统登记排除名单（这些骑手不计入系统登记人数）
+RIDER_EXCLUSIONS = {'张欢'}
+
 # 真实点位人数（站点→实际人数，基于计薪表确认后填写）
 # 真实人数影响人力成本和补贴金额计算
 ACTUAL_STAFF = {
@@ -725,7 +728,9 @@ def process_date(date_str):
         for col in rider_cols:
             if col in df.columns:
                 for r in sdf[col].dropna():
-                    riders.add(str(r).strip())
+                    name = str(r).strip()
+                    if name not in RIDER_EXCLUSIONS:
+                        riders.add(name)
         detected = len(riders)
         configured = registered.get(s)
 
