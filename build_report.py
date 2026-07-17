@@ -4,6 +4,7 @@
 数据源: _summary_cache.json (由 build_dashboard.py 生成)
 用法: python build_report.py           # 全周期
       python build_report.py 2026-06-07 2026-07-09   # 指定区间
+      python build_report.py 2026-06-07 2026-07-09 --no-comp  # 去除餐赔
 输出: 接力送盈利诊断报告.pdf
 """
 import sys, io, os, json
@@ -23,11 +24,10 @@ CACHE = os.path.join(BASE, '_summary_cache.json')
 # ══════════════════════════════════════════════════════
 # 站点分成分类 (2026-07-10 用户确认版)
 # ══════════════════════════════════════════════════════
-COMPANY  = {'和业广场', '万菱广场', '金鹰大厦', '汇德国际', '华林国际C馆', '交易广场'}      # 直营 100%
-CONTRACT = {'万科欧泊', '中大附属第六医院', '中大附三岭南医院', '中大附属第三医院'}          # 承包 50%
+COMPANY  = {'和业广场', '万菱广场', '金鹰大厦', '汇德国际', '华林国际C馆', '交易广场', '高科大厦（新）'}      # 直营 100%
+CONTRACT = {'万科欧泊', '中大附属第六医院', '中大附三岭南医院', '中大附属第三医院', '上城敏捷'}          # 承包 50%
 SPECIAL  = {'绿地星玥', '珠江国际轻纺城'}                                                    # 抽成 0.5元/单
 NOT_OURS = {'新中国大厦', '新亚洲电子城', '孙逸仙北院', '云升科技园'}                          # 剔除
-XIAOER   = {'金鹰大厦': 250, '汇德国际': 350.5}                                              # 小二帮送
 
 DRAW_RATE = 0.5          # 抽成价 元/单
 CONTRACT_SHARE = 0.5     # 承包公司分成比例
@@ -40,7 +40,7 @@ def classify(name):
     return 'exclude'
 
 
-def load_data(start=None, end=None):
+def load_data(start=None, end=None, no_comp=False):
     """读缓存, 按区间聚合每站数据"""
     cache = json.load(open(CACHE, encoding='utf-8'))
     dates = sorted(cache.keys())
@@ -83,29 +83,31 @@ def load_data(start=None, end=None):
                 a['赔偿爆炸次'] += 1
             daily.append({'日期': d, **{k: (num(v) if k in ('订单量','已完成','取消赔偿','结算收入','人力成本','补贴','净利','人均单量','系统登记') else v) for k, v in s.items()}})
 
-    # 计算每站利润 + 公司分成
+    # 计算每站利润 + 公司分成 (no_comp=True 时取消赔偿计为0)
+    def comp(a):
+        return 0 if no_comp else a['取消赔偿']
+
     rows = []
     for n, a in st.items():
         cls = classify(n)
-        xiaoer = XIAOER.get(n, 0)
         if cls == 'special':
             # 抽成: 公司只拿 0.5元/完成单, 不担人力/赔偿
-            station_profit = a['结算收入'] + a['补贴'] - a['人力成本'] - a['取消赔偿']
+            station_profit = a['结算收入'] + a['补贴'] - a['人力成本'] - comp(a)
             company_share = a['已完成'] * DRAW_RATE
         elif cls == 'contract':
-            station_profit = a['结算收入'] + a['补贴'] - a['人力成本'] - a['取消赔偿']
+            station_profit = a['结算收入'] + a['补贴'] - a['人力成本'] - comp(a)
             company_share = station_profit * CONTRACT_SHARE
         else:  # company 直营
-            station_profit = a['结算收入'] + a['补贴'] - a['人力成本'] - a['取消赔偿']
-            company_share = station_profit + xiaoer  # 直营含小二帮送
+            station_profit = a['结算收入'] + a['补贴'] - a['人力成本'] - comp(a)
+            company_share = station_profit
         rows.append({
             '站点': n, '类别': cls, '天数': a['天数'],
             '日均单': round(a['订单量'] / a['天数']) if a['天数'] else 0,
             '总单量': a['订单量'], '已完成': a['已完成'],
             '结算收入': a['结算收入'], '补贴': a['补贴'],
+            '美团收入': a['结算收入'] + a['补贴'],
             '人力成本': a['人力成本'], '取消赔偿': a['取消赔偿'],
             '站点利润': station_profit, '公司分成': company_share,
-            '小二帮送': xiaoer,
             '低单量天': a['低单量天'], '无补贴天': a['无补贴天'],
             '赔偿爆炸次': a['赔偿爆炸次'],
         })
@@ -113,7 +115,7 @@ def load_data(start=None, end=None):
     return dates, rows, daily
 
 
-def build_trend_chart(dates, cache, out):
+def build_trend_chart(dates, cache, out, no_comp=False):
     """公司日分成走势图"""
     def num(v):
         return v if isinstance(v, (int, float)) else 0.0
@@ -125,13 +127,14 @@ def build_trend_chart(dates, cache, out):
             n = s['站点']
             cls = classify(n)
             if cls == 'exclude': continue
-            sp = num(s['结算收入']) + num(s['补贴']) - num(s.get('人力成本')) - num(s['取消赔偿'])
+            comp = 0 if no_comp else num(s['取消赔偿'])
+            sp = num(s['结算收入']) + num(s['补贴']) - num(s.get('人力成本')) - comp
             if cls == 'special':
                 prof += num(s['已完成']) * DRAW_RATE
             elif cls == 'contract':
                 prof += sp * CONTRACT_SHARE
             else:
-                prof += sp + XIAOER.get(n, 0)
+                prof += sp
         xs.append(d[5:]); ys.append(prof)
     fp = font_manager.FontProperties(fname=FONT)
     fig, ax = plt.subplots(figsize=(10, 3.2))
@@ -162,19 +165,23 @@ def money(v):
 
 def main():
     args = [a for a in sys.argv[1:]]
-    start = args[0] if len(args) > 0 else None
-    end = args[1] if len(args) > 1 else None
+    no_comp = '--no-comp' in args
+    date_args = [a for a in args if a != '--no-comp']
+    start = date_args[0] if len(date_args) > 0 else None
+    end = date_args[1] if len(date_args) > 1 else None
 
     cache = json.load(open(CACHE, encoding='utf-8'))
-    dates, rows, daily = load_data(start, end)
+    dates, rows, daily = load_data(start, end, no_comp=no_comp)
     chart = os.path.join(BASE, '_trend_report.png')
-    xs, ys = build_trend_chart(dates, cache, chart)
+    xs, ys = build_trend_chart(dates, cache, chart, no_comp=no_comp)
 
     total_orders = sum(r['总单量'] for r in rows)
     total_share = sum(r['公司分成'] for r in rows)
-    total_xiaoer = sum(r['小二帮送'] for r in rows)
+    total_meituan = sum(r['美团收入'] for r in rows)
     profit_days = sum(1 for y in ys if y > 0)
     avg_share = total_share / len(dates) if dates else 0
+    retention = total_share / total_meituan * 100 if total_meituan > 0 else 0
+    comp_note = '（去除餐赔）' if no_comp else ''
     span_label = f'{dates[0]} - {dates[-1]}  |  共{len(dates)}天  |  {len(rows)}个站点'
 
     pdf = PDF()
@@ -184,14 +191,14 @@ def main():
     pdf.add_page()
     pdf.cn(26); pdf.ln(30)
     pdf.cell(0, 16, '接力送', align='C'); pdf.ln(16)
-    pdf.cn(20); pdf.cell(0, 12, '盈利诊断报告', align='C'); pdf.ln(20)
+    pdf.cn(20); pdf.cell(0, 12, f'盈利诊断报告{comp_note}', align='C'); pdf.ln(20)
     pdf.cn(11); pdf.cell(0, 8, span_label, align='C'); pdf.ln(20)
     pdf.cn(13)
     pdf.cell(0, 10, f'公司总分成  {money(total_share)} 元', align='C'); pdf.ln(10)
     pdf.cell(0, 10, f'日均分成  {money(avg_share)} 元', align='C'); pdf.ln(10)
+    pdf.cell(0, 10, f'美团总收入  {total_meituan:,.0f} 元  (留存率 {retention:.1f}%)', align='C'); pdf.ln(10)
     pdf.cell(0, 10, f'总单量  {total_orders:,} 单', align='C'); pdf.ln(10)
-    pdf.cell(0, 10, f'盈利天数  {profit_days} / {len(dates)} 天', align='C'); pdf.ln(10)
-    pdf.cell(0, 10, f'小二帮送收入  +{total_xiaoer:,.0f} 元', align='C')
+    pdf.cell(0, 10, f'盈利天数  {profit_days} / {len(dates)} 天', align='C')
 
     # ═══ 第2页 走势 + 总览 ═══
     pdf.add_page()
@@ -211,14 +218,23 @@ def main():
     # ═══ 第6页 亏损诊断 ═══
     pdf.add_page()
     pdf.cn(14); pdf.cell(0, 10, '三、亏损诊断'); pdf.ln(12)
-    _diagnosis(pdf, rows, daily)
+    _diagnosis(pdf, rows, daily, no_comp=no_comp)
 
     # ═══ 第7页 结论 ═══
     pdf.add_page()
     pdf.cn(14); pdf.cell(0, 10, '四、结论与建议'); pdf.ln(12)
-    _conclusion(pdf, rows)
+    _conclusion(pdf, rows, no_comp=no_comp)
 
-    out = os.path.join(BASE, '接力送盈利诊断报告.pdf')
+    # 输出文件名
+    if no_comp:
+        if start and end:
+            out = os.path.join(BASE, f'接力送盈利诊断报告_{start}_{end}_去除餐赔.pdf')
+        elif start:
+            out = os.path.join(BASE, f'接力送盈利诊断报告_{start}_至今_去除餐赔.pdf')
+        else:
+            out = os.path.join(BASE, '接力送盈利诊断报告_去除餐赔.pdf')
+    else:
+        out = os.path.join(BASE, '接力送盈利诊断报告.pdf')
     pdf.output(out)
     print(f'[OK] 已生成: {out}')
     print(f'  区间: {span_label}')
@@ -228,11 +244,11 @@ def main():
 def _table(pdf, rows, mode):
     """通用表格"""
     if mode == 'overview':
-        heads = ['站点', '天', '日均', '总单', '结算', '补贴', '人力', '赔偿', '分成']
-        ws = [34, 10, 14, 18, 22, 20, 22, 20, 22]
+        heads = ['站点', '天', '日均', '总单', '结算', '补贴', '美团收入', '人力', '赔偿', '分成']
+        ws = [30, 8, 13, 16, 18, 16, 20, 18, 16, 20]
     else:
-        heads = ['站点', '天', '日均', '总单', '结算', '人力', '赔偿', '站点利润', '公司分成']
-        ws = [34, 10, 14, 18, 22, 22, 20, 24, 24]
+        heads = ['站点', '天', '日均', '总单', '结算', '美团收入', '人力', '赔偿', '站点利润', '公司分成']
+        ws = [30, 8, 12, 16, 18, 18, 16, 16, 20, 20]
     pdf.cn(8)
     for h, w in zip(heads, ws):
         pdf.cell(w, 7, h, border=1, align='C')
@@ -243,11 +259,14 @@ def _table(pdf, rows, mode):
         if mode == 'overview':
             cells = [r['站点'], r['天数'], r['日均单'], r['总单量'],
                      f"{r['结算收入']:,.0f}", f"{r['补贴']:,.0f}",
+                     f"{r['美团收入']:,.0f}",
                      f"{r['人力成本']:,.0f}", f"{r['取消赔偿']:,.0f}",
                      money(r['公司分成'])]
         else:
             cells = [r['站点'], r['天数'], r['日均单'], r['总单量'],
-                     f"{r['结算收入']:,.0f}", f"{r['人力成本']:,.0f}",
+                     f"{r['结算收入']:,.0f}",
+                     f"{r['美团收入']:,.0f}",
+                     f"{r['人力成本']:,.0f}",
                      f"{r['取消赔偿']:,.0f}", money(r['站点利润']),
                      money(r['公司分成'])]
         for c, w in zip(cells, ws):
@@ -260,18 +279,19 @@ def _table(pdf, rows, mode):
     pdf.ln()
 
 
-def _diagnosis(pdf, rows, daily):
+def _diagnosis(pdf, rows, daily, no_comp=False):
     # TOP8 单日亏损
     losses = []
     for d in daily:
         cls = classify(d['站点'])
-        sp = d['结算收入'] + d['补贴'] - d['人力成本'] - d['取消赔偿']
+        comp = 0 if no_comp else d['取消赔偿']
+        sp = d['结算收入'] + d['补贴'] - d['人力成本'] - comp
         if cls == 'special':
             share = d['已完成'] * DRAW_RATE
         elif cls == 'contract':
             share = sp * CONTRACT_SHARE
         else:
-            share = sp + (XIAOER.get(d['站点'], 0) / max(1, 1))
+            share = sp
         if share < 0:
             losses.append({'日期': d['日期'], '站点': d['站点'], '单量': d['订单量'],
                            '登记': d['系统登记'], '人均': d['人均单量'],
@@ -300,25 +320,33 @@ def _diagnosis(pdf, rows, daily):
     low_days = sum(r['低单量天'] for r in rows)
     pdf.cn(11); pdf.cell(0, 8, '三大亏损根因'); pdf.ln(9)
     pdf.cn(9)
-    txt = [
-        f'一、取消赔偿爆炸：{comp_times}次单日超100元，合计赔偿 {total_comp:,.0f}元。属运营管控问题，可通过加强管理减少。',
-        f'二、人均不达标失去补贴：{no_sub_days}个站天人均<20单，(登记-1)x80补贴归零，人力不变直接扩大亏损。',
-        f'三、结构性低单量：{low_days}个站天日单量<50，结算收入无法覆盖固定人力。建议缩减人员或合并站点。',
-    ]
+    if no_comp:
+        txt = [
+            f'一、人均不达标失去补贴：{no_sub_days}个站天人均<20单，(登记-1)x80补贴归零，人力不变直接扩大亏损。',
+            f'二、结构性低单量：{low_days}个站天日单量<50，结算收入无法覆盖固定人力。建议缩减人员或合并站点。',
+            f'三、餐赔参考：合计赔偿 {total_comp:,.0f}元，{comp_times}次单日超100元（已从本次利润计算中剔除）。属运营管控问题，可通过加强管理减少。',
+        ]
+    else:
+        txt = [
+            f'一、取消赔偿爆炸：{comp_times}次单日超100元，合计赔偿 {total_comp:,.0f}元。属运营管控问题，可通过加强管理减少。',
+            f'二、人均不达标失去补贴：{no_sub_days}个站天人均<20单，(登记-1)x80补贴归零，人力不变直接扩大亏损。',
+            f'三、结构性低单量：{low_days}个站天日单量<50，结算收入无法覆盖固定人力。建议缩减人员或合并站点。',
+        ]
     for t in txt:
         pdf.multi_cell(0, 6, t); pdf.ln(1)
 
 
-def _conclusion(pdf, rows):
+def _conclusion(pdf, rows, no_comp=False):
     pdf.cn(9)
     # 找最大利润支柱
     pillar = max(rows, key=lambda r: r['公司分成'])
     losers = [r for r in rows if r['公司分成'] < 0]
     total = sum(r['公司分成'] for r in rows)
+    comp_note = '（餐赔已从利润中剔除）' if no_comp else ''
     txt = [
-        f'利润支柱：{pillar["站点"]}，公司分成 {money(pillar["公司分成"])}元，' +
-        (f'占公司总分成的{pillar["公司分成"]/total*100:.0f}%。' if total > 0 else '。') +
-        '是当前最关键的盈利来源，需密切关注其单量稳定性。',
+        f'利润支柱：{pillar["站点"]}，公司分成 {money(pillar["公司分成"])}元' +
+        (f'，占公司总分成的{pillar["公司分成"]/total*100:.0f}%。' if total > 0 else '。') +
+        f'是当前最关键的盈利来源，需密切关注其单量稳定性。{comp_note}',
         '',
         f'亏损站点：共{len(losers)}个站点公司分成为负' +
         (f'（{", ".join(r["站点"] for r in losers)}）' if losers else '') +
