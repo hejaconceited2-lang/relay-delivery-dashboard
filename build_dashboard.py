@@ -1567,10 +1567,11 @@ function exportRegisteredConfig() {{
             meets = per_p and per_p >= PER_PERSON_THRESHOLD
             subsidy = (reg_count - 1) * SUBSIDY_PER_EXTRA if meets else 0
 
-            # 结算/补贴/赔偿始终计入（基于客观数据）
-            day_total_revenue += settlement
-            day_total_subsidy += subsidy
-            day_total_canc_comp += canc_comp
+            # 仅计入已确认站点（缺计薪数据的站点不参与日汇总）
+            if ons_confirmed:
+                day_total_revenue += settlement
+                day_total_subsidy += subsidy
+                day_total_canc_comp += canc_comp
 
             if ons_confirmed:
                 day_confirmed_count += 1
@@ -1607,10 +1608,8 @@ function exportRegisteredConfig() {{
     # 检查是否有未确认真实人数的站点
     any_unconfirmed = any(not sp.get('真实人数已确认', False) for sp in station_profits)
 
-    # 日净利：有未确认站点时整体不可靠，显示占位符
-    if any_unconfirmed:
-        day_profit = None
-    elif day_confirmed_count > 0:
+    # 日净利：仅基于已确认站点计算（未确认站点已排除在汇总外）
+    if day_confirmed_count > 0:
         day_profit = round(day_total_revenue + day_total_subsidy - day_total_labor - day_total_material - day_total_canc_comp, 1)
     else:
         day_profit = None
