@@ -62,6 +62,12 @@ def build_person_rows(owner, stations):
             company_net = orders * 0.5
             owner_net = orders * 2.0 + subsidy - ins
             rows.append((short, orders, service, subsidy, ins, company_net, owner_net, 'contract'))
+        elif owner == '公司':
+            labor = station_labor.get(short, 0)
+            balance = service + subsidy - ins - labor  # 结余
+            company_net = balance      # 公司自有 100%
+            owner_net = 0
+            rows.append((short, orders, service, subsidy, ins, company_net, owner_net, 'company'))
         else:
             labor = station_labor.get(short, 0)
             balance = service + subsidy - ins - labor  # 结余
@@ -135,7 +141,7 @@ company_total_co = sum(r[5] for r in company_rows)
 company_html = ''
 for short, orders, service, subsidy, ins, company_net, owner_net, model in company_rows:
     mt_total = service + subsidy
-    labor = station_labor.get(short, 0) if model == 'regular' else 0
+    labor = station_labor.get(short, 0) if model != 'contract' else 0
     balance = mt_total - ins - labor
     if labor:
         labor_str = f'<td class="cost">-¥{labor:,.0f}</td>'
