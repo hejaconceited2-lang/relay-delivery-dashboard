@@ -64,7 +64,9 @@ for short in company_stations:
         rows.append((short, m['orders'], m['total'], ins, labor, m['total']-ins-labor, 0, 'company', '公司自有'))
 
 all_labor = sum(station_labor.values())
-company_net = total_co + co_self
+MT_TOTAL = sum(v['total'] for v in mt.values())
+VAT = MT_TOTAL * 0.06
+company_net = total_co + co_self - VAT
 
 # Build HTML
 body = ''
@@ -133,13 +135,14 @@ tr:hover{{background:rgba(129,140,248,.03)}}
 <div class="card"><div class="card-t">美团到账</div><div class="card-v blue">¥{sum(v["total"] for v in mt.values()):,.0f}</div></div>
 <div class="card"><div class="card-t">保险</div><div class="card-v red">-¥{INS:,.0f}</div></div>
 <div class="card"><div class="card-t">公司人力</div><div class="card-v red">-¥{all_labor:,.0f}</div></div>
+<div class="card"><div class="card-t">增值税 6%</div><div class="card-v red">-¥{VAT:,.0f}</div></div>
 <div class="card"><div class="card-t">公司净利</div><div class="card-v {"green" if company_net>=0 else "red"}">{company_net:+,.0f}</div></div>
 </div>
 
 {body}
 
 <div class="total-bar">
-<div class="total-label">公司汇总净利<br><span style="font-size:11px;color:#64748b">到账 ¥{sum(v["total"] for v in mt.values()):,.0f} - 保险 ¥{INS:,.0f} - 人力 ¥{all_labor:,.0f} - 付负责人 ¥{total_ow:,.0f} + 公司自有 ¥{co_self:,.0f}</span></div>
+<div class="total-label">公司汇总净利<br><span style="font-size:11px;color:#64748b">到账 ¥{MT_TOTAL:,.0f} - 保险 ¥{INS:,.0f} - 人力 ¥{all_labor:,.0f} - 付负责人 ¥{total_ow:,.0f} - 增值税 ¥{VAT:,.0f} - 自有站 ¥{-co_self:,.0f}</span></div>
 <div class="total-value {"green" if company_net>=0 else "red"}">{company_net:+,.0f}</div>
 </div>
 
