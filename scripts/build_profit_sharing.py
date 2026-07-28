@@ -92,8 +92,8 @@ for owner in ['陈贤乡', '赵金荣', '欧金标', '郑峰', '陈家瑞']:
         balance = mt_total - ins - labor  # 结余
 
         if model == 'contract':
-            labor_str = '<td class="muted">承包</td>'
-            balance_str = f'<td class="muted">¥2/单</td>'
+            labor_str = '<td class="muted" style="font-size:11px">—（对方自理）</td>'
+            balance_str = f'<td class="muted" style="font-size:11px">¥2/单 × {orders:,}</td>'
         elif labor:
             labor_str = f'<td class="cost">-¥{labor:,.0f}</td>'
             bc = 'positive' if balance >= 0 else 'negative'
@@ -123,7 +123,7 @@ for owner in ['陈贤乡', '赵金荣', '欧金标', '郑峰', '陈家瑞']:
     <div class="person-header">{owner} <span class="total-badge {tc}">公司 ¥{total_company:+,.0f}</span> <span class="total-badge {to}">负责人 ¥{total_owner:+,.0f}</span></div>
     <table>
         <thead><tr>
-            <th>点位</th><th>单量</th><th>美团到账</th><th>保险</th><th>人力</th><th>结余</th><th>公司50%</th><th>负责人50%</th>
+            <th>点位</th><th>单量</th><th>美团到账</th><th>保险</th><th>人力</th><th>结余</th><th>公司</th><th>负责人</th>
         </tr></thead>
         <tbody>{rows_html}</tbody>
     </table>
