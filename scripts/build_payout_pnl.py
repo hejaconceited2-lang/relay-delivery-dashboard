@@ -51,7 +51,9 @@ total_payout = 0
 
 for owner, stations in owner_stations.items():
     owner_detail = []
-    owner_payout = 0
+    company_pays = 0  # 公司应付
+    owner_owes = 0    # 负责人应给回公司
+
     for short in stations:
         m = mt.get(short)
         if not m:
@@ -62,27 +64,35 @@ for owner, stations in owner_stations.items():
         ins = round(total_insurance * orders / total_mt_orders, 2)
 
         if short in CONTRACT_STATIONS:
-            # Contract: company pays 2元/单 to operator
-            payout = orders * 2.0
-            note = f'{orders}单 × ¥2'
+            # Contract: company pays 2元/单, subsidy passes to operator
+            payout = orders * 2.0 + subsidy - ins
+            note = f'{orders}单×¥2 + 补贴¥{subsidy:,.0f} - 保险¥{ins:,.0f}'
             model = 'contract'
+            company_pays += payout
+            owe = 0
         else:
-            # Regular: profit = service + subsidy - insurance - labor
             labor = station_labor.get(short, 0)
-            profit = service + subsidy - ins - labor
-            # Payout = profit if positive, 0 if negative
-            payout = profit if profit > 0 else 0
-            note = f'服务¥{service:,.0f}+补贴¥{subsidy:,.0f}-保险¥{ins:,.0f}-人力¥{labor:,.0f}'
+            balance = service + subsidy - ins - labor  # 结余
+            owner_share = balance * 0.5  # 50%
+            if owner_share >= 0:
+                payout = owner_share
+                owe = 0
+                note = f'结余¥{balance:+,.0f} × 50%'
+            else:
+                payout = 0
+                owe = -owner_share  # positive amount owed to company
+                note = f'亏损¥{balance:+,.0f} × 50% → 负责人应补'
+            company_pays += payout
+            owner_owes += owe
             model = 'regular'
 
-        owner_payout += payout
         owner_detail.append((short, orders, service, subsidy, ins,
-                           station_labor.get(short, 0) if model=='regular' else 0,
-                           payout, model, note))
+                           station_labor.get(short, 0) if model == 'regular' else 0,
+                           payout if payout > 0 else -owe, model, note))
 
-    total_payout += owner_payout
-    if owner_payout > 0 or owner_detail:
-        payout_rows.append((owner, owner_detail, owner_payout))
+    net = company_pays - owner_owes
+    total_payout += company_pays
+    payout_rows.append((owner, owner_detail, company_pays, owner_owes, net))
 
 # ===== Company P&L =====
 # Revenue: Meituan settlement for ALL 11 settlement stations
@@ -93,7 +103,7 @@ company_revenue_after_ins = company_revenue_settlement - total_insurance
 
 # Costs
 total_labor_paid = sum(station_labor.values())  # company paid labor
-total_payout_to_owners = total_payout  # payments to owners
+total_payout_to_owners = sum(r[4] for r in payout_rows)  # net payout per owner
 
 # Company net
 contract_company_share = 0
@@ -125,11 +135,11 @@ for owner, stations in owner_stations.items():
         regular_labor += station_labor.get(short, 0)
         regular_insurance += round(total_insurance * m['orders'] / total_mt_orders, 2)
 
-# Regular station payout is sum of positive profit
-for owner, detail, op in payout_rows:
-    for short, orders, service, subsidy, ins, labor, payout, model, note in detail:
-        if model == 'regular':
-            regular_payout += payout
+# Regular station payout is sum of owner share
+for owner, detail, cp, ow, net in payout_rows:
+    for d in detail:
+        if d[7] == 'regular' and d[6] > 0:  # d[6]=payout, d[7]=model
+            regular_payout += d[6]
 
 regular_company_net = regular_revenue - regular_labor - regular_payout - regular_insurance
 
@@ -171,24 +181,36 @@ def money(v, cls=''):
 
 # Payout table
 payout_html = ''
-for owner, detail, owner_payout in payout_rows:
+for owner, detail, company_pays, owner_owes, net in payout_rows:
     rows = ''
-    for short, orders, service, subsidy, ins, labor, payout, model, note in detail:
-        model_tag = ' <span style="font-size:10px;color:#fbbf24">承包(2元/单)</span>' if model == 'contract' else ''
+    for short, orders, service, subsidy, ins, labor, amount, model, note in detail:
+        model_tag = ' <span style="font-size:10px;color:#fbbf24">承包</span>' if model == 'contract' else ''
         labor_str = f'<td class="cost">-¥{labor:,.0f}</td>' if model == 'regular' and labor else '<td class="muted">—</td>'
+        if amount >= 0:
+            amt_html = f'<td class="income"><strong>+¥{amount:,.0f}</strong></td>'
+        else:
+            amt_html = f'<td class="cost"><strong>-¥{-amount:,.0f}</strong></td>'
         rows += f'''<tr>
             <td>{short}{model_tag}</td>
             <td>{orders:,}</td>
             <td class="muted" style="font-size:11px">{note}</td>
             {labor_str}
-            <td class="income"><strong>¥{payout:,.0f}</strong></td>
+            {amt_html}
         </tr>'''
 
-    pc = 'positive' if owner_payout >= 0 else 'negative'
+    if net >= 0:
+        summary = f'<span class="total-badge positive">公司应付 ¥{net:,.0f}</span>'
+    else:
+        summary = f'<span class="total-badge negative">负责人应退回 ¥{-net:,.0f}</span>'
+
+    detail_note = ''
+    if owner_owes > 0:
+        detail_note = f'（含亏损分摊 ¥{owner_owes:,.0f}）'
+
     payout_html += f'''<div class="person-section">
-    <div class="person-header">{owner} <span class="total-badge {pc}">应付 ¥{owner_payout:,.0f}</span></div>
+    <div class="person-header">{owner} {summary} <span style="font-size:11px;color:#64748b">{detail_note}</span></div>
     <table>
-        <thead><tr><th>点位</th><th>单量</th><th>计算过程</th><th>人力(公司垫)</th><th>应付金额</th></tr></thead>
+        <thead><tr><th>点位</th><th>单量</th><th>计算过程</th><th>人力(公司垫)</th><th>金额(+/−)</th></tr></thead>
         <tbody>{rows}</tbody>
     </table>
 </div>'''
@@ -254,19 +276,19 @@ tr:hover {{ background:rgba(129,140,248,0.03); }}
 
 <div class="cards">
     <div class="card">
-        <div class="card-title">应付总额</div>
+        <div class="card-title">公司应付责任人</div>
         <div class="card-value income">¥{total_payout:,.0f}</div>
         <div class="card-sub">陈贤乡+赵金荣+欧金标</div>
     </div>
     <div class="card">
-        <div class="card-title">常规点位(结余为正才付)</div>
-        <div class="card-value income">¥{sum(r[2] for r in payout_rows if any(d[7]=='regular' for d in r[1])):,.0f}</div>
-        <div class="card-sub">万科欧泊亏损不计入</div>
+        <div class="card-title">责任人应退回公司</div>
+        <div class="card-value cost">¥{sum(r[3] for r in payout_rows):,.0f}</div>
+        <div class="card-sub">亏损站点50%分摊</div>
     </div>
     <div class="card">
-        <div class="card-title">承包点位(2元/单)</div>
-        <div class="card-value" style="color:#fbbf24">¥{sum(d[6] for r in payout_rows for d in r[1] if d[7]=='contract'):,.0f}</div>
-        <div class="card-sub">绿地星玥+珠江国际轻纺城</div>
+        <div class="card-title">公司净支出</div>
+        <div class="card-value" style="color:#fbbf24">¥{sum(r[4] for r in payout_rows):,.0f}</div>
+        <div class="card-sub">应付 - 退回</div>
     </div>
 </div>
 
@@ -300,7 +322,7 @@ tr:hover {{ background:rgba(129,140,248,0.03); }}
 
     <div class="pnl-label">应付责任人-承包站点</div>
     <div class="pnl-value cost">-¥{contract_payout:,.0f}</div>
-    <div class="pnl-sub">绿地星玥 ¥{2960*2:,.0f} + 珠江 ¥{383*2:,.0f}</div>
+    <div class="pnl-sub">含 2元/单 + 补贴 ¥{2960*2+5520:,.0f}(绿地) + ¥{383*2+320:,.0f}(珠江)</div>
 
     <div class="pnl-label">公司自有站人力</div>
     <div class="pnl-value cost">-¥{company_stations_labor:,.0f}</div>
@@ -334,7 +356,7 @@ tr:hover {{ background:rgba(129,140,248,0.03); }}
     <strong>说明:</strong><br>
     1. 常规站点规则：结余(服务费+补贴-保险-人力)为正时才向负责人支付，亏损由公司承担<br>
     2. 承包站点规则：公司按 2元/单 支付给对方，补贴和保险由对方自理，公司净赚 0.5元/单<br>
-    3. 万科欧泊 6月亏损 ¥3,379(人力¥6,030超过收入¥2,730)，无应付<br>
+    3. 万科欧泊亏损 ¥3,379，负责人承担50%(¥1,690)，从其他站点分成中抵扣<br>
     4. 分红比例、物料费用等未计入，待另行约定
 </div>
 </div>
@@ -352,17 +374,16 @@ with open('june_payout_pnl.html', 'w', encoding='utf-8') as f:
 
 print(f'[OK] {out_path}')
 print()
-print(f'=== 应付点位负责人 ===')
-for owner, detail, payout in payout_rows:
-    print(f'{owner}: ¥{payout:,.0f}')
-print(f'合计应付: ¥{total_payout:,.0f}')
+print('=== 公司与负责人结算 ===')
+for owner, detail, company_pays, owner_owes, net in payout_rows:
+    if net >= 0:
+        print(f'{owner}: 公司应付 ¥{net:,.0f}')
+    else:
+        print(f'{owner}: 负责人应退回 ¥{-net:,.0f}')
+print(f'公司净支出: ¥{total_payout_to_owners:,.0f}')
 print()
 print(f'=== 公司层面盈亏 ===')
 print(f'美团到账(扣保险): ¥{company_revenue_after_ins:,.0f}')
 print(f'垫付人力: -¥{regular_labor+company_stations_labor:,.0f}')
-print(f'应付负责人: -¥{total_payout:,.0f}')
+print(f'净付负责人: -¥{total_payout_to_owners:,.0f}')
 print(f'公司净利: ¥{company_total_net:+,.0f}')
-print()
-print(f'常规站公司净利: ¥{regular_company_net:+,.0f}')
-print(f'承包站公司净利: ¥{contract_company_net:+,.0f}')
-print(f'自有站公司净利: ¥{company_self_net:+,.0f}')
