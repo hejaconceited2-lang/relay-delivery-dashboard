@@ -57,7 +57,7 @@ for owner, stations in owners:
         co_sum += co; ow_sum += ow
         rows.append((short, o, mt_in, ins, station_labor.get(short,0), vat, co, ow, 'contract' if short in CONTRACT else 'regular', owner))
     total_co += co_sum; total_ow += ow_sum
-    rows.append(('__SUB__', 0, 0, 0, 0, co_sum, ow_sum, 'sub', owner))
+    rows.append(('__SUB__', 0, 0, 0, 0, 0, co_sum, ow_sum, 'sub', owner))
 
 # Company
 co_self = 0
@@ -75,15 +75,15 @@ total_vat = MT_TOTAL * VAT_RATE
 # Build HTML
 body = ''
 for owner, _ in owners:
-    sub_rows = [r for r in rows if r[8] == owner]
-    owner_net = sum(r[5] for r in sub_rows if r[0] != '__SUB__')
-    owner_get = sum(r[6] for r in sub_rows if r[0] != '__SUB__')
+    sub_rows = [r for r in rows if r[9] == owner]
+    owner_net = sum(r[6] for r in sub_rows if r[0] != '__SUB__')
+    owner_get = sum(r[7] for r in sub_rows if r[0] != '__SUB__')
 
     body += f'''<div class="group">
     <div class="group-title">{owner} <span style="color:#64748b;font-weight:400;font-size:13px">公司 {owner_net:+,.0f} · 负责人 {owner_get:+,.0f}</span></div>
     <table><thead><tr><th>点位</th><th>单量</th><th>美团到账</th><th>-保险</th><th>-人力</th><th>-增值税</th><th>公司</th><th>负责人</th></tr></thead><tbody>'''
     for r in sub_rows:
-        if r[7] == 'sub': continue
+        if r[8] == 'sub': continue
         short, o, mt_in, ins, labor, vat, co, ow, model, _ = r
         tag = ' <b style="color:#fbbf24;font-size:10px">承包</b>' if model == 'contract' else ''
         labor_s = f'<td class="cost">-{labor:,.0f}</td>' if model != 'contract' and labor else '<td class="muted">—</td>'
@@ -91,7 +91,7 @@ for owner, _ in owners:
     body += '</tbody></table></div>'
 
 # Self section
-self_rows = [r for r in rows if r[8] == '公司自有']
+self_rows = [r for r in rows if r[9] == '公司自有']
 body += f'''<div class="group self">
 <div class="group-title">公司自有 <span style="color:#64748b;font-weight:400;font-size:13px">合计 {co_self:+,.0f}</span></div>
 <table><thead><tr><th>点位</th><th>单量</th><th>美团到账</th><th>-保险</th><th>-人力</th><th>-增值税</th><th>结余</th></tr></thead><tbody>'''
