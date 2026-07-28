@@ -57,20 +57,22 @@ def build_person_rows(owner, stations):
         service = m['service_fee']
         subsidy = m['subsidy']
         ins = round(total_insurance * orders / total_mt_orders, 2)
+        mt_in = service + subsidy
+        vat = mt_in * 0.06  # 增值税按收入比例均摊
         if short in ('绿地星玥', '珠江国际轻纺城'):
-            # Contract: company keeps 0.5/单 spread, subsidy+insurance go to operator
-            company_net = orders * 0.5
+            # Contract: company keeps 0.5/单 spread, company bears VAT
+            company_net = orders * 0.5 - vat
             owner_net = orders * 2.0 + subsidy - ins
             rows.append((short, orders, service, subsidy, ins, company_net, owner_net, 'contract'))
         elif owner == '公司':
             labor = station_labor.get(short, 0)
-            balance = service + subsidy - ins - labor  # 结余
+            balance = mt_in - ins - labor - vat
             company_net = balance      # 公司自有 100%
             owner_net = 0
             rows.append((short, orders, service, subsidy, ins, company_net, owner_net, 'company'))
         else:
             labor = station_labor.get(short, 0)
-            balance = service + subsidy - ins - labor  # 结余
+            balance = mt_in - ins - labor - vat
             company_net = balance * 0.5  # 公司50%
             owner_net = balance * 0.5    # 负责人50%
             rows.append((short, orders, service, subsidy, ins, company_net, owner_net, 'regular'))

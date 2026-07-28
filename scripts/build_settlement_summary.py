@@ -34,6 +34,10 @@ owners = [
 ]
 company_stations = ['和业广场', '万菱广场', '金鹰大厦', '汇德国际', '华林国际C馆']
 
+all_labor = sum(station_labor.values())
+MT_TOTAL = sum(v['total'] for v in mt.values())
+VAT_RATE = 0.06
+
 rows = []
 total_co = total_ow = 0
 for owner, stations in owners:
@@ -44,13 +48,14 @@ for owner, stations in owners:
         o, s, sub = m['orders'], m['service_fee'], m['subsidy']
         ins = round(INS_PER * o, 2)
         mt_in = s + sub
+        vat = mt_in * VAT_RATE  # VAT按美团到账比例分摊
         if short in CONTRACT:
-            co = o * 0.5; ow = o * 2 + sub - ins
+            co = o * 0.5 - vat; ow = o * 2 + sub - ins
         else:
             labor = station_labor.get(short, 0)
-            co = ow = (mt_in - ins - labor) * 0.5
+            co = ow = (mt_in - ins - labor - vat) * 0.5
         co_sum += co; ow_sum += ow
-        rows.append((short, o, mt_in, ins, station_labor.get(short,0), co, ow, 'contract' if short in CONTRACT else 'regular', owner))
+        rows.append((short, o, mt_in, ins, station_labor.get(short,0), vat, co, ow, 'contract' if short in CONTRACT else 'regular', owner))
     total_co += co_sum; total_ow += ow_sum
     rows.append(('__SUB__', 0, 0, 0, 0, co_sum, ow_sum, 'sub', owner))
 
@@ -60,13 +65,12 @@ for short in company_stations:
     m = mt.get(short)
     if m:
         labor = station_labor.get(short, 0); ins = round(INS_PER * m['orders'], 2)
-        co_self += m['total'] - ins - labor
-        rows.append((short, m['orders'], m['total'], ins, labor, m['total']-ins-labor, 0, 'company', '公司自有'))
+        vat = m['total'] * VAT_RATE
+        co_self += m['total'] - ins - labor - vat
+        rows.append((short, m['orders'], m['total'], ins, labor, vat, m['total']-ins-labor-vat, 0, 'company', '公司自有'))
 
-all_labor = sum(station_labor.values())
-MT_TOTAL = sum(v['total'] for v in mt.values())
-VAT = MT_TOTAL * 0.06
-company_net = total_co + co_self - VAT
+company_net = total_co + co_self
+total_vat = MT_TOTAL * VAT_RATE
 
 # Build HTML
 body = ''
@@ -77,23 +81,23 @@ for owner, _ in owners:
 
     body += f'''<div class="group">
     <div class="group-title">{owner} <span style="color:#64748b;font-weight:400;font-size:13px">公司 {owner_net:+,.0f} · 负责人 {owner_get:+,.0f}</span></div>
-    <table><thead><tr><th>点位</th><th>单量</th><th>美团到账</th><th>-保险</th><th>-人力</th><th>公司</th><th>负责人</th></tr></thead><tbody>'''
+    <table><thead><tr><th>点位</th><th>单量</th><th>美团到账</th><th>-保险</th><th>-人力</th><th>-增值税</th><th>公司</th><th>负责人</th></tr></thead><tbody>'''
     for r in sub_rows:
         if r[7] == 'sub': continue
-        short, o, mt_in, ins, labor, co, ow, model, _ = r
+        short, o, mt_in, ins, labor, vat, co, ow, model, _ = r
         tag = ' <b style="color:#fbbf24;font-size:10px">承包</b>' if model == 'contract' else ''
-        labor_s = f'<td class="cost">-{labor:,.0f}</td>' if model == 'regular' and labor else '<td class="muted">—</td>'
-        body += f'<tr><td>{short}{tag}</td><td>{o:,}</td><td class="inc">+{mt_in:,.0f}</td><td class="cost">-{ins:,.0f}</td>{labor_s}<td class="{"pos" if co>=0 else "neg"}">{co:+,.0f}</td><td class="{"pos" if ow>=0 else "neg"}">{ow:+,.0f}</td></tr>'
+        labor_s = f'<td class="cost">-{labor:,.0f}</td>' if model != 'contract' and labor else '<td class="muted">—</td>'
+        body += f'<tr><td>{short}{tag}</td><td>{o:,}</td><td class="inc">+{mt_in:,.0f}</td><td class="cost">-{ins:,.0f}</td>{labor_s}<td class="cost">-{vat:,.0f}</td><td class="{"pos" if co>=0 else "neg"}">{co:+,.0f}</td><td class="{"pos" if ow>=0 else "neg"}">{ow:+,.0f}</td></tr>'
     body += '</tbody></table></div>'
 
 # Self section
 self_rows = [r for r in rows if r[8] == '公司自有']
 body += f'''<div class="group self">
 <div class="group-title">公司自有 <span style="color:#64748b;font-weight:400;font-size:13px">合计 {co_self:+,.0f}</span></div>
-<table><thead><tr><th>点位</th><th>单量</th><th>美团到账</th><th>-保险</th><th>-人力</th><th>结余</th></tr></thead><tbody>'''
+<table><thead><tr><th>点位</th><th>单量</th><th>美团到账</th><th>-保险</th><th>-人力</th><th>-增值税</th><th>结余</th></tr></thead><tbody>'''
 for r in self_rows:
-    short, o, mt_in, ins, labor, co, _, _, _ = r
-    body += f'<tr><td>{short}</td><td>{o:,}</td><td class="inc">+{mt_in:,.0f}</td><td class="cost">-{ins:,.0f}</td><td class="cost">-{labor:,.0f}</td><td class="{"pos" if co>=0 else "neg"}">{co:+,.0f}</td></tr>'
+    short, o, mt_in, ins, labor, vat, co, _, _, _ = r
+    body += f'<tr><td>{short}</td><td>{o:,}</td><td class="inc">+{mt_in:,.0f}</td><td class="cost">-{ins:,.0f}</td><td class="cost">-{labor:,.0f}</td><td class="cost">-{vat:,.0f}</td><td class="{"pos" if co>=0 else "neg"}">{co:+,.0f}</td></tr>'
 body += '</tbody></table></div>'
 
 html = f'''<!DOCTYPE html>
@@ -135,14 +139,14 @@ tr:hover{{background:rgba(129,140,248,.03)}}
 <div class="card"><div class="card-t">美团到账</div><div class="card-v blue">¥{sum(v["total"] for v in mt.values()):,.0f}</div></div>
 <div class="card"><div class="card-t">保险</div><div class="card-v red">-¥{INS:,.0f}</div></div>
 <div class="card"><div class="card-t">公司人力</div><div class="card-v red">-¥{all_labor:,.0f}</div></div>
-<div class="card"><div class="card-t">增值税 6%</div><div class="card-v red">-¥{VAT:,.0f}</div></div>
+<div class="card"><div class="card-t">增值税 6%</div><div class="card-v red">-¥{total_vat:,.0f}</div></div>
 <div class="card"><div class="card-t">公司净利</div><div class="card-v {"green" if company_net>=0 else "red"}">{company_net:+,.0f}</div></div>
 </div>
 
 {body}
 
 <div class="total-bar">
-<div class="total-label">公司汇总净利<br><span style="font-size:11px;color:#64748b">到账 ¥{MT_TOTAL:,.0f} - 保险 ¥{INS:,.0f} - 人力 ¥{all_labor:,.0f} - 付负责人 ¥{total_ow:,.0f} - 增值税 ¥{VAT:,.0f} - 自有站 ¥{-co_self:,.0f}</span></div>
+<div class="total-label">公司汇总净利<br><span style="font-size:11px;color:#64748b">到账 ¥{MT_TOTAL:,.0f} - 保险 ¥{INS:,.0f} - 人力 ¥{all_labor:,.0f} - 付负责人 ¥{total_ow:,.0f} - 增值税 ¥{total_vat:,.0f} - 自有站 ¥{-co_self:,.0f}</span></div>
 <div class="total-value {"green" if company_net>=0 else "red"}">{company_net:+,.0f}</div>
 </div>
 
