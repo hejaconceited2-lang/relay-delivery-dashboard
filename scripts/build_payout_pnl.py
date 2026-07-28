@@ -133,15 +133,17 @@ for owner, detail, op in payout_rows:
 
 regular_company_net = regular_revenue - regular_labor - regular_payout - regular_insurance
 
-# Contract stations
+# Contract stations: company receives service+subsidy, passes subsidy+2元/单 to operator
 contract_revenue = 0
 contract_payout = 0
 contract_insurance = 0
 for short in CONTRACT_STATIONS:
     m = mt.get(short)
     if m:
+        # Revenue includes subsidy (Meituan pays company, company passes to operator)
         contract_revenue += m['total']
-        contract_payout += m['orders'] * 2.0
+        # Payout: 2元/单 + 补贴 passed through
+        contract_payout += m['orders'] * 2.0 + m['subsidy']
         contract_insurance += round(total_insurance * m['orders'] / total_mt_orders, 2)
 
 contract_company_net = contract_revenue - contract_payout - contract_insurance

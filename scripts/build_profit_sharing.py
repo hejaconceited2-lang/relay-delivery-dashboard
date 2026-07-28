@@ -58,9 +58,9 @@ def build_person_rows(owner, stations):
         subsidy = m['subsidy']
         ins = round(total_insurance * orders / total_mt_orders, 2)
         if short in ('绿地星玥', '珠江国际轻纺城'):
-            # Contract model: company pays 2元/单, company keeps subsidy+0.5/单
-            company_net = orders * 0.5 + subsidy - ins
-            owner_net = orders * 2.0
+            # Contract: company keeps 0.5/单 spread, subsidy+insurance go to operator
+            company_net = orders * 0.5
+            owner_net = orders * 2.0 + subsidy - ins
             rows.append((short, orders, service, subsidy, ins, company_net, owner_net, 'contract'))
         else:
             labor = station_labor.get(short, 0)
@@ -219,7 +219,7 @@ tr:hover {{ background:rgba(129,140,248,0.03); }}
 
 <div class="formula">
     <strong>常规点位:</strong> 结余 = 美团到账(服务费+补贴) - 保险({ins_per_order*100:.1f}分/单) - 公司垫付人力 → 结余<strong>公司/负责人各50%</strong><br>
-    <strong>承包点位:</strong> 公司按 2元/单 结算给负责人，公司留 0.5元/单 + 补贴 - 保险
+    <strong>承包点位:</strong> 公司留 0.5元/单差价，补贴及保险归对方自理
 </div>
 
 <div class="summary-cards">
@@ -265,7 +265,7 @@ tr:hover {{ background:rgba(129,140,248,0.03); }}
 <div style="margin-top:24px; padding:16px; background:rgba(251,191,36,0.08); border:1px solid rgba(251,191,36,0.2); border-radius:8px; font-size:12px; color:#fbbf24; line-height:1.8;">
     <strong>说明:</strong><br>
     1. 常规站点盈亏各半：结余(美团到账-保险-人力)由公司和负责人50/50分摊，亏损也各担一半<br>
-    2. 承包站点：公司留0.5元/单+补贴-保险，负责人得2元/单(自负所有运营成本)<br>
+    2. 承包站点：公司只留0.5元/单差价，补贴及保险归对方<br>
     3. 保险按各站点单量比例分摊（总额 ¥{total_insurance:,.2f}）<br>
     4. 郑峰/陈家瑞 6月未纳入结算；物料费用待计入<br>
     5. 绿地星玥/珠江轻纺城缺计薪数据，常规站若缺计薪结余会偏高
