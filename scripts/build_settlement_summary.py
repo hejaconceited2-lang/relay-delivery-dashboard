@@ -130,6 +130,10 @@ tr:hover{{background:rgba(129,140,248,.03)}}
 .total-label{{font-size:13px;color:#94a3b8}}
 .total-value{{font-size:24px;font-weight:700}}
 .note{{color:#64748b;font-size:11px;margin-top:12px;line-height:1.6}}
+.pnl table{{width:100%}}.pnl td{{padding:10px 12px;border-bottom:1px solid #1e293b;font-size:13px}}
+.pnl .l{{text-align:left}}.pnl .r{{text-align:right;font-weight:600}}
+.pnl tr.sec td{{background:#1e293b;color:#94a3b8;font-size:11px;font-weight:600}}
+.pnl tr.total td{{border-top:2px solid #3b82f6;font-size:15px;font-weight:700;padding:14px 12px}}
 </style></head><body>
 <div class="container">
 <h1>6月总结算</h1>
@@ -151,7 +155,25 @@ tr:hover{{background:rgba(129,140,248,.03)}}
 </div>
 
 <div class="note">
-常规站点结余(美团到账-保险-人力)由公司/负责人各50%分摊 · 承包站点公司留0.5元/单，补贴归对方 · 物料费用待计入
+常规站点结余(美团到账-保险-人力-增值税)由公司/负责人各50%分摊 · 承包站点公司留0.5元/单，增值税由公司承担 · 物料费用待计入
+</div>
+
+<h2 style="margin-top:28px;font-size:16px;padding-bottom:8px;border-bottom:1px solid #334155">公司层面盈利</h2>
+<div class="pnl">
+<table>
+<tr><td class="l">美团总结算</td><td class="r inc">+¥{MT_TOTAL:,.0f}</td></tr>
+<tr><td class="l">保险</td><td class="r cost">-¥{INS:,.0f}</td></tr>
+<tr><td class="l">增值税 6%</td><td class="r cost">-¥{total_vat:,.0f}</td></tr>
+<tr class="sec"><td class="l">人力成本（公司垫付）</td><td class="r cost">-¥{all_labor:,.0f}</td></tr>
+<tr class="sec"><td class="l">应付负责人分红</td><td class="r cost">-¥{total_ow:,.0f}</td></tr>
+<tr class="total"><td class="l">公司净利</td><td class="r {"pos" if company_net>=0 else "neg"}">{company_net:+,.0f}</td></tr>
+</table>
+</div>
+
+<div style="margin-top:20px;display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
+<div class="card"><div class="card-t">合伙人站点公司分成</div><div class="card-v {"green" if total_co>=0 else "red"}">{total_co:+,.0f}</div></div>
+<div class="card"><div class="card-t">自有站点盈亏</div><div class="card-v {"green" if co_self>=0 else "red"}">{co_self:+,.0f}</div></div>
+<div class="card"><div class="card-t">最终净利润</div><div class="card-v {"green" if company_net>=0 else "red"}">{company_net:+,.0f}</div></div>
 </div>
 </div></body></html>'''
 
