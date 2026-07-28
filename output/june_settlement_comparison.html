@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>6月结算对比 · 美团 vs 预估</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family: 'Inter', -apple-system, sans-serif; background:#0f172a; color:#e2e8f0; padding:24px; }
+.container { max-width:1400px; margin:0 auto; }
+h1 { font-size:24px; margin-bottom:4px; }
+.subtitle { color:#64748b; margin-bottom:24px; font-size:14px; }
+.summary-cards { display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:16px; margin-bottom:24px; }
+.card { background:#1e293b; border:1px solid #334155; border-radius:12px; padding:20px; }
+.card-title { font-size:12px; color:#94a3b8; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px; }
+.card-value { font-size:28px; font-weight:700; }
+.card-sub { font-size:12px; color:#64748b; margin-top:4px; }
+.card-mt { color:#818cf8; }
+.card-our { color:#34d399; }
+.card-diff { color:#fbbf24; }
+table { width:100%; border-collapse:collapse; background:#1e293b; border-radius:12px; overflow:hidden; margin-bottom:24px; }
+th { background:#334155; padding:12px 14px; text-align:right; font-size:12px; color:#94a3b8; font-weight:600; white-space:nowrap; }
+th:first-child { text-align:left; }
+td { padding:10px 14px; text-align:right; border-bottom:1px solid #1e293b; font-size:13px; font-variant-numeric:tabular-nums; }
+td:first-child { text-align:left; font-weight:600; color:#e2e8f0; }
+tr:hover { background:rgba(129,140,248,0.04); }
+.positive { color:#34d399; }
+.negative { color:#f87171; }
+.warn { color:#fbbf24; }
+.muted { color:#64748b; }
+.badge { display:inline-block; padding:2px 8px; border-radius:4px; font-size:10px; font-weight:600; }
+.badge-mt { background:rgba(129,140,248,0.2); color:#818cf8; }
+.badge-comp { background:rgba(248,113,113,0.2); color:#f87171; }
+.note { background:rgba(251,191,36,0.1); border:1px solid rgba(251,191,36,0.3); border-radius:8px; padding:16px; margin-top:24px; font-size:13px; color:#fbbf24; line-height:1.8; }
+.note strong { color:#fcd34d; }
+h2 { font-size:18px; margin:24px 0 16px; }
+.section-divider { border-top:2px solid #334155; margin:32px 0 24px; }
+.totals-grid { display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-bottom:24px; }
+@media (max-width:768px) { .totals-grid { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<div class="container">
+<h1>6月结算对比 · 美团实际 vs 内部预估</h1>
+<p class="subtitle">美团结算: 惠州艾云 | 周期: 2026.06.01-06.30 | 生成: 2026-07-28</p>
+
+<div class="summary-cards">
+    <div class="card">
+        <div class="card-title">美团净结算(到账)</div>
+        <div class="card-value card-mt">¥44,339</div>
+        <div class="card-sub">服务费 ¥26,768 + 补贴 ¥18,480 - 保险 ¥908</div>
+    </div>
+    <div class="card">
+        <div class="card-title">内部预估净收入(未扣保险)</div>
+        <div class="card-value card-our">¥75,540</div>
+        <div class="card-sub">结算 ¥43,780 + 补贴 ¥31,760</div>
+    </div>
+    <div class="card">
+        <div class="card-title">差异(预估 vs 美团到账)</div>
+        <div class="card-value card-diff">¥+31,201</div>
+        <div class="card-sub">+70.4%</div>
+    </div>
+    <div class="card">
+        <div class="card-title">结算单量</div>
+        <div class="card-value" style="color:#a78bfa">10,707</div>
+        <div class="card-sub">内部统计 17,511 单 (+6804)</div>
+    </div>
+</div>
+
+<h2>站点明细</h2>
+<table>
+<thead><tr>
+    <th>站点</th>
+    <th>美团单量</th>
+    <th>内部单量</th>
+    <th>差异</th>
+    <th>美团服务费</th>
+    <th>内部结算</th>
+    <th>美团补贴</th>
+    <th>内部补贴</th>
+    <th>补贴差</th>
+    <th>美团合计</th>
+    <th>内部净收入</th>
+</tr></thead>
+<tbody>
+<tr>
+    <td>万科欧泊</td>
+    <td>932</td>
+    <td>1,493</td>
+    <td class="warn">+561</td>
+    <td>¥2,330</td>
+    <td>¥3,732</td>
+    <td>¥400</td>
+    <td>¥1,360</td>
+    <td class="positive">¥+960</td>
+    <td>¥2,730</td>
+    <td>¥-2,558</td>
+</tr>
+<tr>
+    <td>万菱广场</td>
+    <td>531</td>
+    <td>771</td>
+    <td class="warn">+240</td>
+    <td>¥1,328</td>
+    <td>¥1,928</td>
+    <td>¥480</td>
+    <td>¥800</td>
+    <td class="positive">¥+320</td>
+    <td>¥1,808</td>
+    <td>¥-242</td>
+</tr>
+<tr>
+    <td>中大附三岭南医院</td>
+    <td>1,016</td>
+    <td>1,299</td>
+    <td class="warn">+283</td>
+    <td>¥2,540</td>
+    <td>¥3,248</td>
+    <td>¥1,360</td>
+    <td>¥2,720</td>
+    <td class="positive">¥+1,360</td>
+    <td>¥3,900</td>
+    <td>¥+1,438</td>
+</tr>
+<tr>
+    <td>中大附属第六医院</td>
+    <td>3,238</td>
+    <td>3,839</td>
+    <td class="warn">+601</td>
+    <td>¥8,095</td>
+    <td>¥9,598</td>
+    <td>¥9,040</td>
+    <td>¥12,960</td>
+    <td class="positive">¥+3,920</td>
+    <td>¥17,135</td>
+    <td>¥+11,828</td>
+</tr>
+<tr>
+    <td>云升科技园</td>
+    <td>40</td>
+    <td>59</td>
+    <td class="warn">+19</td>
+    <td>¥100</td>
+    <td>¥148</td>
+    <td>¥0</td>
+    <td>¥0</td>
+    <td class="">¥+0</td>
+    <td>¥100</td>
+    <td>¥+148</td>
+</tr>
+<tr>
+    <td>华林国际C馆</td>
+    <td>48</td>
+    <td>106</td>
+    <td class="warn">+58</td>
+    <td>¥120</td>
+    <td>¥265</td>
+    <td>¥0</td>
+    <td>¥0</td>
+    <td class="">¥+0</td>
+    <td>¥120</td>
+    <td>¥-635</td>
+</tr>
+<tr>
+    <td>和业广场</td>
+    <td>959</td>
+    <td>1,306</td>
+    <td class="warn">+347</td>
+    <td>¥2,398</td>
+    <td>¥3,265</td>
+    <td>¥1,040</td>
+    <td>¥2,160</td>
+    <td class="positive">¥+1,120</td>
+    <td>¥3,438</td>
+    <td>¥+1,675</td>
+</tr>
+<tr>
+    <td>孙逸仙北院 <span class="badge badge-comp">竞争方</span></td>
+    <td><span class=muted>—</span></td>
+    <td>527</td>
+    <td class="warn">+527</td>
+    <td><span class=muted>—</span></td>
+    <td>¥1,318</td>
+    <td><span class=muted>—</span></td>
+    <td>¥640</td>
+    <td class="positive">¥+640</td>
+    <td><span class=muted>未结算</span></td>
+    <td>¥+1,958</td>
+</tr>
+<tr>
+    <td>新中国大厦 <span class="badge badge-comp">竞争方</span></td>
+    <td><span class=muted>—</span></td>
+    <td>1,430</td>
+    <td class="warn">+1430</td>
+    <td><span class=muted>—</span></td>
+    <td>¥3,575</td>
+    <td><span class=muted>—</span></td>
+    <td>¥2,880</td>
+    <td class="positive">¥+2,880</td>
+    <td><span class=muted>未结算</span></td>
+    <td>¥+6,455</td>
+</tr>
+<tr>
+    <td>新亚洲电子城 <span class="badge badge-comp">竞争方</span></td>
+    <td><span class=muted>—</span></td>
+    <td>740</td>
+    <td class="warn">+740</td>
+    <td><span class=muted>—</span></td>
+    <td>¥1,850</td>
+    <td><span class=muted>—</span></td>
+    <td>¥800</td>
+    <td class="positive">¥+800</td>
+    <td><span class=muted>未结算</span></td>
+    <td>¥+2,650</td>
+</tr>
+<tr>
+    <td>汇德国际</td>
+    <td>331</td>
+    <td>403</td>
+    <td class="warn">+72</td>
+    <td>¥828</td>
+    <td>¥1,008</td>
+    <td>¥160</td>
+    <td>¥400</td>
+    <td class="positive">¥+240</td>
+    <td>¥988</td>
+    <td>¥-317</td>
+</tr>
+<tr>
+    <td>珠江国际轻纺城</td>
+    <td>383</td>
+    <td>595</td>
+    <td class="warn">+212</td>
+    <td>¥958</td>
+    <td>¥1,488</td>
+    <td>¥320</td>
+    <td>¥560</td>
+    <td class="positive">¥+240</td>
+    <td>¥1,278</td>
+    <td>¥+2,048</td>
+</tr>
+<tr>
+    <td>绿地星玥</td>
+    <td>2,960</td>
+    <td>4,534</td>
+    <td class="warn">+1574</td>
+    <td>¥7,400</td>
+    <td>¥11,335</td>
+    <td>¥5,520</td>
+    <td>¥6,240</td>
+    <td class="positive">¥+720</td>
+    <td>¥12,920</td>
+    <td>¥+17,575</td>
+</tr>
+<tr>
+    <td>金鹰大厦</td>
+    <td>269</td>
+    <td>409</td>
+    <td class="warn">+140</td>
+    <td>¥672</td>
+    <td>¥1,022</td>
+    <td>¥160</td>
+    <td>¥240</td>
+    <td class="positive">¥+80</td>
+    <td>¥832</td>
+    <td>¥-1,498</td>
+</tr>
+</tbody>
+</table>
+
+<div class="note">
+    <strong>差异分析:</strong><br>
+    1. <strong>单量差(+6804单):</strong> 美团只统计「完单」(已送达)，内部统计含全量；此外美团按月度口径可能排除部分退款/异常单<br>
+    2. <strong>补贴差(¥+13,280):</strong> 美团按「符合条件的天数 × 人头数 × 80元」累计，一个站点积累多人多天；内部按当日 (T-1)×80 逐日计算，口径不同导致差异<br>
+    3. <strong>服务费:</strong> 双方均按 2.5 元/单计算，差异来自单量差异<br>
+    4. <strong>保险扣除:</strong> 美团每单扣 8.5 分保险，6月合计 ¥908.12，内部模型未计入此项<br>
+    5. <strong>竞争方站点:</strong> 孙逸仙北院、新中国大厦、新亚洲电子城不在美团结算范围<br>
+    6. <strong>人力成本:</strong> 仅内部计算，美团不涉及
+</div>
+</div>
+</body>
+</html>
