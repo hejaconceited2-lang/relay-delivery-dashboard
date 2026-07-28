@@ -51,8 +51,8 @@ tr:hover { background:rgba(129,140,248,0.03); }
 <p class="subtitle">基于美团结算数据 | 2026年6月 | 惠州艾云</p>
 
 <div class="formula">
-    <strong>常规点位:</strong> 结余 = 服务费(2.5元/单) + 补贴 - 保险(8.5分/单) - 公司垫付人力<br>
-    <strong>承包点位(绿地星玥/珠江国际轻纺城):</strong> 公司按 2元/单 结算给对方，公司留 0.5元/单；补贴、保险、人力等由对方全权负责
+    <strong>常规点位:</strong> 结余 = 美团到账(服务费+补贴) - 保险(8.5分/单) - 公司垫付人力 → 结余<strong>公司/负责人各50%</strong><br>
+    <strong>承包点位:</strong> 公司按 2元/单 结算给负责人，公司留 0.5元/单 + 补贴 - 保险
 </div>
 
 <div class="summary-cards">
@@ -72,82 +72,93 @@ tr:hover { background:rgba(129,140,248,0.03); }
         <div class="card-sub">8站有计薪数据</div>
     </div>
     <div class="card">
-        <div class="card-title">个人点位结余合计</div>
-        <div class="card-value" style="color:#34d399">¥+6,143</div>
+        <div class="card-title">公司分成(个人点位)</div>
+        <div class="card-value" style="color:#34d399">¥+9,464</div>
+        <div class="card-sub">3人站点 50% 分成 + 承包站点差价</div>
+    </div>
+    <div class="card">
+        <div class="card-title">负责人分成(个人点位)</div>
+        <div class="card-value" style="color:#34d399">¥+8,922</div>
         <div class="card-sub">陈贤乡+赵金荣+欧金标</div>
     </div>
 </div>
 
 <div class="person-section">
-    <div class="person-header">陈贤乡 <span class="total-badge positive">合计 ¥+7,780</span></div>
+    <div class="person-header">陈贤乡 <span class="total-badge positive">公司 ¥+3,890</span> <span class="total-badge positive">负责人 ¥+3,890</span></div>
     <table>
         <thead><tr>
-            <th>点位</th><th>单量</th><th>服务费</th><th>补贴</th><th>保险</th><th>人力</th><th>结余</th>
+            <th>点位</th><th>单量</th><th>美团到账</th><th>保险</th><th>人力</th><th>结余</th><th>公司50%</th><th>负责人50%</th>
         </tr></thead>
         <tbody><tr>
             <td>中大附属第六医院</td>
             <td>3,238</td>
-            <td class="income">¥8,095</td>
-            <td class="income">¥9,040</td>
+            <td class="income">¥17,135</td>
             <td class="cost">-¥275</td>
             <td class="cost">-¥9,080</td>
-            <td class="positive"><strong>¥+7,780</strong></td>
+            <td class="positive">¥+7,780</td>
+            <td class="positive"><strong>¥+3,890</strong></td>
+            <td class="positive"><strong>¥+3,890</strong></td>
         </tr></tbody>
     </table>
 </div><div class="person-section">
-    <div class="person-header">赵金荣 <span class="total-badge negative">合计 ¥-1,708</span></div>
+    <div class="person-header">赵金荣 <span class="total-badge positive">公司 ¥+5,538</span> <span class="total-badge positive">负责人 ¥+4,996</span></div>
     <table>
         <thead><tr>
-            <th>点位</th><th>单量</th><th>服务费</th><th>补贴</th><th>保险</th><th>人力</th><th>结余</th>
+            <th>点位</th><th>单量</th><th>美团到账</th><th>保险</th><th>人力</th><th>结余</th><th>公司50%</th><th>负责人50%</th>
         </tr></thead>
         <tbody><tr>
             <td>绿地星玥 <span style=font-size:10px;color:#fbbf24>承包</span></td>
             <td>2,960</td>
-            <td class="income">¥7,400</td>
-            <td class="income">¥5,520</td>
+            <td class="income">¥12,920</td>
             <td class="cost">-¥251</td>
-            <td class="muted">承包制</td>
-            <td class="positive"><strong>¥+1,480</strong></td>
+            <td class="muted">承包</td>
+            <td class="muted">¥2/单</td>
+            <td class="positive"><strong>¥+6,749</strong></td>
+            <td class="positive"><strong>¥+5,920</strong></td>
         </tr><tr>
             <td>万科欧泊</td>
             <td>932</td>
-            <td class="income">¥2,330</td>
-            <td class="income">¥400</td>
+            <td class="income">¥2,730</td>
             <td class="cost">-¥79</td>
             <td class="cost">-¥6,030</td>
-            <td class="negative"><strong>¥-3,379</strong></td>
+            <td class="negative">¥-3,379</td>
+            <td class="negative"><strong>¥-1,690</strong></td>
+            <td class="negative"><strong>¥-1,690</strong></td>
         </tr><tr>
             <td>珠江国际轻纺城 <span style=font-size:10px;color:#fbbf24>承包</span></td>
             <td>383</td>
-            <td class="income">¥958</td>
-            <td class="income">¥320</td>
+            <td class="income">¥1,278</td>
             <td class="cost">-¥32</td>
-            <td class="muted">承包制</td>
-            <td class="positive"><strong>¥+192</strong></td>
+            <td class="muted">承包</td>
+            <td class="muted">¥2/单</td>
+            <td class="positive"><strong>¥+479</strong></td>
+            <td class="positive"><strong>¥+766</strong></td>
         </tr></tbody>
     </table>
 </div><div class="person-section">
-    <div class="person-header">欧金标 <span class="total-badge positive">合计 ¥+70</span></div>
+    <div class="person-header">欧金标 <span class="total-badge positive">公司 ¥+35</span> <span class="total-badge positive">负责人 ¥+35</span></div>
     <table>
         <thead><tr>
-            <th>点位</th><th>单量</th><th>服务费</th><th>补贴</th><th>保险</th><th>人力</th><th>结余</th>
+            <th>点位</th><th>单量</th><th>美团到账</th><th>保险</th><th>人力</th><th>结余</th><th>公司50%</th><th>负责人50%</th>
         </tr></thead>
         <tbody><tr>
             <td>中大附三岭南医院</td>
             <td>1,016</td>
-            <td class="income">¥2,540</td>
-            <td class="income">¥1,360</td>
+            <td class="income">¥3,900</td>
             <td class="cost">-¥86</td>
             <td class="cost">-¥3,840</td>
-            <td class="negative"><strong>¥-26</strong></td>
+            <td class="negative">¥-26</td>
+            <td class="negative"><strong>¥-13</strong></td>
+            <td class="negative"><strong>¥-13</strong></td>
         </tr><tr>
             <td>云升科技园</td>
             <td>40</td>
             <td class="income">¥100</td>
-            <td class="income">¥0</td>
             <td class="cost">-¥3</td>
-            <td class="muted">—</td>
-            <td class="positive"><strong>¥+97</strong></td>
+            <td class="muted">缺计薪</td>
+            <td class="positive">¥+97</td>
+            <td class="positive"><strong>¥+48</strong></td>
+            <td class="positive"><strong>¥+48</strong></td>
         </tr></tbody>
     </table>
 </div><div class="person-section">
@@ -159,61 +170,62 @@ tr:hover { background:rgba(129,140,248,0.03); }
 </div>
 
 <div class="company-section">
-    <div class="company-header">公司自有 · 6月结余 <span class="total-badge negative" style="margin-left:8px;">合计 ¥-2,251</span></div>
+    <div class="company-header">公司自有 · 6月结余 <span class="total-badge negative" style="margin-left:8px;">公司 ¥-1,126</span></div>
     <table>
         <thead><tr>
-            <th>点位</th><th>单量</th><th>服务费</th><th>补贴</th><th>保险</th><th>人力</th><th>结余</th>
+            <th>点位</th><th>单量</th><th>美团到账</th><th>保险</th><th>人力</th><th>结余</th><th>公司</th>
         </tr></thead>
         <tbody><tr>
         <td>和业广场</td>
         <td>959</td>
-        <td class="income">¥2,398</td>
-        <td class="income">¥1,040</td>
+        <td class="income">¥3,438</td>
         <td class="cost">-¥81</td>
         <td class="cost">-¥2,670</td>
-        <td class="positive"><strong>¥+686</strong></td>
+        <td class="positive">¥+686</td>
+        <td class="positive"><strong>¥+343</strong></td>
     </tr><tr>
         <td>万菱广场</td>
         <td>531</td>
-        <td class="income">¥1,328</td>
-        <td class="income">¥480</td>
+        <td class="income">¥1,808</td>
         <td class="cost">-¥45</td>
         <td class="cost">-¥2,070</td>
-        <td class="negative"><strong>¥-308</strong></td>
+        <td class="negative">¥-308</td>
+        <td class="negative"><strong>¥-154</strong></td>
     </tr><tr>
         <td>金鹰大厦</td>
         <td>269</td>
-        <td class="income">¥672</td>
-        <td class="income">¥160</td>
+        <td class="income">¥832</td>
         <td class="cost">-¥23</td>
         <td class="cost">-¥1,800</td>
-        <td class="negative"><strong>¥-990</strong></td>
+        <td class="negative">¥-990</td>
+        <td class="negative"><strong>¥-495</strong></td>
     </tr><tr>
         <td>汇德国际</td>
         <td>331</td>
-        <td class="income">¥828</td>
-        <td class="income">¥160</td>
+        <td class="income">¥988</td>
         <td class="cost">-¥28</td>
         <td class="cost">-¥2,175</td>
-        <td class="negative"><strong>¥-1,216</strong></td>
+        <td class="negative">¥-1,216</td>
+        <td class="negative"><strong>¥-608</strong></td>
     </tr><tr>
         <td>华林国际C馆</td>
         <td>48</td>
         <td class="income">¥120</td>
-        <td class="income">¥0</td>
         <td class="cost">-¥4</td>
         <td class="cost">-¥540</td>
-        <td class="negative"><strong>¥-424</strong></td>
+        <td class="negative">¥-424</td>
+        <td class="negative"><strong>¥-212</strong></td>
     </tr></tbody>
     </table>
 </div>
 
 <div style="margin-top:24px; padding:16px; background:rgba(251,191,36,0.08); border:1px solid rgba(251,191,36,0.2); border-radius:8px; font-size:12px; color:#fbbf24; line-height:1.8;">
     <strong>说明:</strong><br>
-    1. 绿地星玥、珠江国际轻纺城为承包模式：公司按2元/单结算，公司净留0.5元/单<br>
-    2. 保险按各站点单量比例分摊（总额 ¥908.12）<br>
-    3. 郑峰(中大附属第三医院)、陈家瑞(敏捷上城国际) 6月未纳入美团结算<br>
-    4. 分红比例、物料费用等需另行约定
+    1. 常规站点盈亏各半：结余(美团到账-保险-人力)由公司和负责人50/50分摊，亏损也各担一半<br>
+    2. 承包站点：公司留0.5元/单+补贴-保险，负责人得2元/单(自负所有运营成本)<br>
+    3. 保险按各站点单量比例分摊（总额 ¥908.12）<br>
+    4. 郑峰/陈家瑞 6月未纳入结算；物料费用待计入<br>
+    5. 绿地星玥/珠江轻纺城缺计薪数据，常规站若缺计薪结余会偏高
 </div>
 </div>
 </body>

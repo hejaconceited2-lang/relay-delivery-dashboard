@@ -46,7 +46,7 @@ total_insurance = 908.12
 total_mt_orders = sum(v['orders'] for v in mt.values())
 ins_per_order = total_insurance / total_mt_orders
 
-# Build person rows
+# Build person rows (盈亏各半)
 def build_person_rows(owner, stations):
     rows = []
     for short in stations:
@@ -58,13 +58,16 @@ def build_person_rows(owner, stations):
         subsidy = m['subsidy']
         ins = round(total_insurance * orders / total_mt_orders, 2)
         if short in ('绿地星玥', '珠江国际轻纺城'):
-            # Contract model: company pays 2元/单, operator handles everything
-            company_net = orders * 0.5  # (2.5-2.0)=0.5/单
-            rows.append((short, orders, service, subsidy, ins, 0, company_net, 'contract'))
+            # Contract model: company pays 2元/单, company keeps subsidy+0.5/单
+            company_net = orders * 0.5 + subsidy - ins
+            owner_net = orders * 2.0
+            rows.append((short, orders, service, subsidy, ins, company_net, owner_net, 'contract'))
         else:
             labor = station_labor.get(short, 0)
-            net = service + subsidy - ins - labor
-            rows.append((short, orders, service, subsidy, ins, labor, net, 'regular'))
+            balance = service + subsidy - ins - labor  # 结余
+            company_net = balance * 0.5  # 公司50%
+            owner_net = balance * 0.5    # 负责人50%
+            rows.append((short, orders, service, subsidy, ins, company_net, owner_net, 'regular'))
     return rows
 
 # Build HTML
@@ -79,33 +82,48 @@ for owner in ['陈贤乡', '赵金荣', '欧金标', '郑峰', '陈家瑞']:
 </div>''')
         continue
 
-    total_net = sum(r[6] for r in rows)
-    net_class = 'positive' if total_net >= 0 else 'negative'
+    total_company = sum(r[5] for r in rows)  # company share
+    total_owner = sum(r[6] for r in rows)    # owner share
 
     rows_html = ''
-    for short, orders, service, subsidy, ins, labor, net, model in rows:
-        nc = 'positive' if net >= 0 else 'negative'
+    for short, orders, service, subsidy, ins, company_net, owner_net, model in rows:
+        mt_total = service + subsidy
+        labor = station_labor.get(short, 0) if model == 'regular' else 0
+        balance = mt_total - ins - labor  # 结余
+
         if model == 'contract':
-            labor_str = '<td class="muted">承包制</td>'
+            labor_str = '<td class="muted">承包</td>'
+            balance_str = f'<td class="muted">¥2/单</td>'
         elif labor:
             labor_str = f'<td class="cost">-¥{labor:,.0f}</td>'
+            bc = 'positive' if balance >= 0 else 'negative'
+            balance_str = f'<td class="{bc}">¥{balance:+,.0f}</td>'
         else:
-            labor_str = '<td class="muted">—</td>'
+            labor_str = '<td class="muted">缺计薪</td>'
+            bc = 'positive' if balance >= 0 else 'negative'
+            balance_str = f'<td class="{bc}">¥{balance:+,.0f}</td>'
+
+        coc = 'positive' if company_net >= 0 else 'negative'
+        owc = 'positive' if owner_net >= 0 else 'negative'
+
         rows_html += f'''<tr>
             <td>{short}{" <span style=font-size:10px;color:#fbbf24>承包</span>" if model=="contract" else ""}</td>
             <td>{orders:,}</td>
-            <td class="income">¥{service:,.0f}</td>
-            <td class="income">¥{subsidy:,.0f}</td>
+            <td class="income">¥{mt_total:,.0f}</td>
             <td class="cost">-¥{ins:,.0f}</td>
             {labor_str}
-            <td class="{nc}"><strong>¥{net:+,.0f}</strong></td>
+            {balance_str}
+            <td class="{coc}"><strong>¥{company_net:+,.0f}</strong></td>
+            <td class="{owc}"><strong>¥{owner_net:+,.0f}</strong></td>
         </tr>'''
 
+    tc = 'positive' if total_company >= 0 else 'negative'
+    to = 'positive' if total_owner >= 0 else 'negative'
     html_parts.append(f'''<div class="person-section">
-    <div class="person-header">{owner} <span class="total-badge {net_class}">合计 ¥{total_net:+,.0f}</span></div>
+    <div class="person-header">{owner} <span class="total-badge {tc}">公司 ¥{total_company:+,.0f}</span> <span class="total-badge {to}">负责人 ¥{total_owner:+,.0f}</span></div>
     <table>
         <thead><tr>
-            <th>点位</th><th>单量</th><th>服务费</th><th>补贴</th><th>保险</th><th>人力</th><th>结余</th>
+            <th>点位</th><th>单量</th><th>美团到账</th><th>保险</th><th>人力</th><th>结余</th><th>公司50%</th><th>负责人50%</th>
         </tr></thead>
         <tbody>{rows_html}</tbody>
     </table>
@@ -113,28 +131,36 @@ for owner in ['陈贤乡', '赵金荣', '欧金标', '郑峰', '陈家瑞']:
 
 # Company section
 company_rows = build_person_rows('公司', owner_map['公司'])
-company_net = sum(r[6] for r in company_rows)
+company_total_co = sum(r[5] for r in company_rows)
 company_html = ''
-for short, orders, service, subsidy, ins, labor, net, model in company_rows:
-    nc = 'positive' if net >= 0 else 'negative'
-    if model == 'contract':
-        labor_str = '<td class="muted">承包制</td>'
-    elif labor:
+for short, orders, service, subsidy, ins, company_net, owner_net, model in company_rows:
+    mt_total = service + subsidy
+    labor = station_labor.get(short, 0) if model == 'regular' else 0
+    balance = mt_total - ins - labor
+    if labor:
         labor_str = f'<td class="cost">-¥{labor:,.0f}</td>'
+        bc = 'positive' if balance >= 0 else 'negative'
+        balance_str = f'<td class="{bc}">¥{balance:+,.0f}</td>'
     else:
         labor_str = '<td class="muted">—</td>'
+        balance_str = '<td class="muted">—</td>'
+    coc = 'positive' if company_net >= 0 else 'negative'
     company_html += f'''<tr>
         <td>{short}</td>
         <td>{orders:,}</td>
-        <td class="income">¥{service:,.0f}</td>
-        <td class="income">¥{subsidy:,.0f}</td>
+        <td class="income">¥{mt_total:,.0f}</td>
         <td class="cost">-¥{ins:,.0f}</td>
         {labor_str}
-        <td class="{nc}"><strong>¥{net:+,.0f}</strong></td>
+        {balance_str}
+        <td class="{coc}"><strong>¥{company_net:+,.0f}</strong></td>
     </tr>'''
 
 # Totals
-all_person_net = sum(
+all_company_share = sum(
+    sum(r[5] for r in build_person_rows(o, owner_map[o]))
+    for o in ['陈贤乡', '赵金荣', '欧金标']
+)
+all_owner_share = sum(
     sum(r[6] for r in build_person_rows(o, owner_map[o]))
     for o in ['陈贤乡', '赵金荣', '欧金标']
 )
@@ -192,8 +218,8 @@ tr:hover {{ background:rgba(129,140,248,0.03); }}
 <p class="subtitle">基于美团结算数据 | 2026年6月 | 惠州艾云</p>
 
 <div class="formula">
-    <strong>常规点位:</strong> 结余 = 服务费(2.5元/单) + 补贴 - 保险({ins_per_order*100:.1f}分/单) - 公司垫付人力<br>
-    <strong>承包点位(绿地星玥/珠江国际轻纺城):</strong> 公司按 2元/单 结算给对方，公司留 0.5元/单；补贴、保险、人力等由对方全权负责
+    <strong>常规点位:</strong> 结余 = 美团到账(服务费+补贴) - 保险({ins_per_order*100:.1f}分/单) - 公司垫付人力 → 结余<strong>公司/负责人各50%</strong><br>
+    <strong>承包点位:</strong> 公司按 2元/单 结算给负责人，公司留 0.5元/单 + 补贴 - 保险
 </div>
 
 <div class="summary-cards">
@@ -213,8 +239,13 @@ tr:hover {{ background:rgba(129,140,248,0.03); }}
         <div class="card-sub">{len(station_labor)}站有计薪数据</div>
     </div>
     <div class="card">
-        <div class="card-title">个人点位结余合计</div>
-        <div class="card-value" style="color:{'#34d399' if all_person_net>=0 else '#f87171'}">¥{all_person_net:+,.0f}</div>
+        <div class="card-title">公司分成(个人点位)</div>
+        <div class="card-value" style="color:{'#34d399' if all_company_share>=0 else '#f87171'}">¥{all_company_share:+,.0f}</div>
+        <div class="card-sub">3人站点 50% 分成 + 承包站点差价</div>
+    </div>
+    <div class="card">
+        <div class="card-title">负责人分成(个人点位)</div>
+        <div class="card-value" style="color:{'#34d399' if all_owner_share>=0 else '#f87171'}">¥{all_owner_share:+,.0f}</div>
         <div class="card-sub">陈贤乡+赵金荣+欧金标</div>
     </div>
 </div>
@@ -222,10 +253,10 @@ tr:hover {{ background:rgba(129,140,248,0.03); }}
 {''.join(html_parts)}
 
 <div class="company-section">
-    <div class="company-header">公司自有 · 6月结余 <span class="total-badge {'positive' if company_net>=0 else 'negative'}" style="margin-left:8px;">合计 ¥{company_net:+,.0f}</span></div>
+    <div class="company-header">公司自有 · 6月结余 <span class="total-badge {'positive' if company_total_co>=0 else 'negative'}" style="margin-left:8px;">公司 ¥{company_total_co:+,.0f}</span></div>
     <table>
         <thead><tr>
-            <th>点位</th><th>单量</th><th>服务费</th><th>补贴</th><th>保险</th><th>人力</th><th>结余</th>
+            <th>点位</th><th>单量</th><th>美团到账</th><th>保险</th><th>人力</th><th>结余</th><th>公司</th>
         </tr></thead>
         <tbody>{company_html}</tbody>
     </table>
@@ -233,10 +264,11 @@ tr:hover {{ background:rgba(129,140,248,0.03); }}
 
 <div style="margin-top:24px; padding:16px; background:rgba(251,191,36,0.08); border:1px solid rgba(251,191,36,0.2); border-radius:8px; font-size:12px; color:#fbbf24; line-height:1.8;">
     <strong>说明:</strong><br>
-    1. 绿地星玥、珠江国际轻纺城为承包模式：公司按2元/单结算，公司净留0.5元/单<br>
-    2. 保险按各站点单量比例分摊（总额 ¥{total_insurance:,.2f}）<br>
-    3. 郑峰(中大附属第三医院)、陈家瑞(敏捷上城国际) 6月未纳入美团结算<br>
-    4. 分红比例、物料费用等需另行约定
+    1. 常规站点盈亏各半：结余(美团到账-保险-人力)由公司和负责人50/50分摊，亏损也各担一半<br>
+    2. 承包站点：公司留0.5元/单+补贴-保险，负责人得2元/单(自负所有运营成本)<br>
+    3. 保险按各站点单量比例分摊（总额 ¥{total_insurance:,.2f}）<br>
+    4. 郑峰/陈家瑞 6月未纳入结算；物料费用待计入<br>
+    5. 绿地星玥/珠江轻纺城缺计薪数据，常规站若缺计薪结余会偏高
 </div>
 </div>
 </body>
@@ -253,5 +285,9 @@ with open('june_profit_sharing.html', 'w', encoding='utf-8') as f:
     f.write(html)
 
 print(f'[OK] {out_path}')
-print(f'  个人点位结余: 陈贤乡 ¥{build_person_rows("陈贤乡",owner_map["陈贤乡"])[0][6]:,.0f} | 赵金荣 ¥{sum(r[6] for r in build_person_rows("赵金荣",owner_map["赵金荣"])):,.0f} | 欧金标 ¥{sum(r[6] for r in build_person_rows("欧金标",owner_map["欧金标"])):,.0f}')
-print(f'  公司自有: ¥{company_net:,.0f}')
+for o in ['陈贤乡', '赵金荣', '欧金标']:
+    rows = build_person_rows(o, owner_map[o])
+    co = sum(r[5] for r in rows)
+    ow = sum(r[6] for r in rows)
+    print(f'  {o}: 公司 ¥{co:,.0f} | 负责人 ¥{ow:,.0f}')
+print(f'  公司自有: ¥{company_total_co:,.0f}')
