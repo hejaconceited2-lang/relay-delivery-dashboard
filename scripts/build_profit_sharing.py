@@ -57,9 +57,14 @@ def build_person_rows(owner, stations):
         service = m['service_fee']
         subsidy = m['subsidy']
         ins = round(total_insurance * orders / total_mt_orders, 2)
-        labor = station_labor.get(short, 0)
-        net = service + subsidy - ins - labor
-        rows.append((short, orders, service, subsidy, ins, labor, net))
+        if short in ('绿地星玥', '珠江国际轻纺城'):
+            # Contract model: company pays 2元/单, operator handles everything
+            company_net = orders * 0.5  # (2.5-2.0)=0.5/单
+            rows.append((short, orders, service, subsidy, ins, 0, company_net, 'contract'))
+        else:
+            labor = station_labor.get(short, 0)
+            net = service + subsidy - ins - labor
+            rows.append((short, orders, service, subsidy, ins, labor, net, 'regular'))
     return rows
 
 # Build HTML
@@ -78,11 +83,16 @@ for owner in ['陈贤乡', '赵金荣', '欧金标', '郑峰', '陈家瑞']:
     net_class = 'positive' if total_net >= 0 else 'negative'
 
     rows_html = ''
-    for short, orders, service, subsidy, ins, labor, net in rows:
+    for short, orders, service, subsidy, ins, labor, net, model in rows:
         nc = 'positive' if net >= 0 else 'negative'
-        labor_str = f'<td class="cost">-¥{labor:,.0f}</td>' if labor else '<td class="muted">—</td>'
+        if model == 'contract':
+            labor_str = '<td class="muted">承包制</td>'
+        elif labor:
+            labor_str = f'<td class="cost">-¥{labor:,.0f}</td>'
+        else:
+            labor_str = '<td class="muted">—</td>'
         rows_html += f'''<tr>
-            <td>{short}</td>
+            <td>{short}{" <span style=font-size:10px;color:#fbbf24>承包</span>" if model=="contract" else ""}</td>
             <td>{orders:,}</td>
             <td class="income">¥{service:,.0f}</td>
             <td class="income">¥{subsidy:,.0f}</td>
@@ -105,9 +115,14 @@ for owner in ['陈贤乡', '赵金荣', '欧金标', '郑峰', '陈家瑞']:
 company_rows = build_person_rows('公司', owner_map['公司'])
 company_net = sum(r[6] for r in company_rows)
 company_html = ''
-for short, orders, service, subsidy, ins, labor, net in company_rows:
+for short, orders, service, subsidy, ins, labor, net, model in company_rows:
     nc = 'positive' if net >= 0 else 'negative'
-    labor_str = f'<td class="cost">-¥{labor:,.0f}</td>' if labor else '<td class="muted">—</td>'
+    if model == 'contract':
+        labor_str = '<td class="muted">承包制</td>'
+    elif labor:
+        labor_str = f'<td class="cost">-¥{labor:,.0f}</td>'
+    else:
+        labor_str = '<td class="muted">—</td>'
     company_html += f'''<tr>
         <td>{short}</td>
         <td>{orders:,}</td>
@@ -177,7 +192,8 @@ tr:hover {{ background:rgba(129,140,248,0.03); }}
 <p class="subtitle">基于美团结算数据 | 2026年6月 | 惠州艾云</p>
 
 <div class="formula">
-    <strong>结算公式:</strong> 结余 = 美团服务费(2.5元/单) + 美团补贴 - 保险({ins_per_order*100:.1f}分/单) - 公司垫付人力
+    <strong>常规点位:</strong> 结余 = 服务费(2.5元/单) + 补贴 - 保险({ins_per_order*100:.1f}分/单) - 公司垫付人力<br>
+    <strong>承包点位(绿地星玥/珠江国际轻纺城):</strong> 公司按 2元/单 结算给对方，公司留 0.5元/单；补贴、保险、人力等由对方全权负责
 </div>
 
 <div class="summary-cards">
@@ -217,7 +233,7 @@ tr:hover {{ background:rgba(129,140,248,0.03); }}
 
 <div style="margin-top:24px; padding:16px; background:rgba(251,191,36,0.08); border:1px solid rgba(251,191,36,0.2); border-radius:8px; font-size:12px; color:#fbbf24; line-height:1.8;">
     <strong>说明:</strong><br>
-    1. 绿地星玥、珠江国际轻纺城 6月无计薪数据，人力成本待补充后结余会下降<br>
+    1. 绿地星玥、珠江国际轻纺城为承包模式：公司按2元/单结算，公司净留0.5元/单<br>
     2. 保险按各站点单量比例分摊（总额 ¥{total_insurance:,.2f}）<br>
     3. 郑峰(中大附属第三医院)、陈家瑞(敏捷上城国际) 6月未纳入美团结算<br>
     4. 分红比例、物料费用等需另行约定
