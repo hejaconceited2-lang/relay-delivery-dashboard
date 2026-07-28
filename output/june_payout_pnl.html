@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>6月点位结算 & 公司盈亏</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family: 'Inter', -apple-system, sans-serif; background:#0f172a; color:#e2e8f0; padding:24px; }
+.container { max-width:1100px; margin:0 auto; }
+h1 { font-size:22px; margin-bottom:4px; }
+h2 { font-size:17px; margin:28px 0 16px; padding-bottom:8px; border-bottom:1px solid #334155; }
+.subtitle { color:#64748b; margin-bottom:8px; font-size:13px; }
+
+.person-section { background:#1e293b; border:1px solid #334155; border-radius:12px; padding:16px 20px; margin-bottom:16px; }
+.person-header { font-size:16px; font-weight:700; margin-bottom:12px; display:flex; align-items:center; gap:12px; }
+.total-badge { font-size:13px; padding:4px 12px; border-radius:6px; font-weight:600; }
+.total-badge.positive { background:rgba(52,211,153,0.15); color:#34d399; }
+.total-badge.negative { background:rgba(248,113,113,0.15); color:#f87171; }
+
+table { width:100%; border-collapse:collapse; font-size:13px; }
+th { background:#0f172a; padding:10px 12px; text-align:right; color:#94a3b8; font-weight:600; font-size:11px; }
+th:first-child { text-align:left; }
+td { padding:9px 12px; text-align:right; border-bottom:1px solid #1e293b; }
+td:first-child { text-align:left; font-weight:500; }
+tr:hover { background:rgba(129,140,248,0.03); }
+
+.income { color:#34d399; }
+.cost { color:#f87171; }
+.positive { color:#34d399; }
+.negative { color:#f87171; }
+.muted { color:#64748b; }
+
+.cards { display:grid; grid-template-columns:repeat(auto-fit, minmax(220px,1fr)); gap:12px; margin-bottom:20px; }
+.card { background:#1e293b; border:1px solid #334155; border-radius:10px; padding:16px; }
+.card-title { font-size:11px; color:#94a3b8; margin-bottom:6px; }
+.card-value { font-size:22px; font-weight:700; }
+.card-sub { font-size:11px; color:#64748b; margin-top:4px; }
+.card-breakdown { font-size:11px; color:#94a3b8; margin-top:6px; line-height:1.6; }
+
+.pnl-row { display:grid; grid-template-columns:200px 1fr; gap:0; margin-bottom:20px; background:#1e293b; border-radius:12px; overflow:hidden; border:1px solid #334155; }
+.pnl-label { padding:12px 16px; font-weight:600; font-size:13px; border-bottom:1px solid #334155; }
+.pnl-value { padding:12px 16px; text-align:right; font-size:13px; border-bottom:1px solid #334155; font-weight:600; }
+.pnl-sub { grid-column:1/-1; padding:8px 16px; font-size:11px; color:#94a3b8; border-bottom:1px solid #1e293b; }
+.pnl-section { grid-column:1/-1; padding:10px 16px; font-size:12px; color:#818cf8; font-weight:600; background:#1e3a5f; }
+.pnl-total { grid-column:1/-1; padding:14px 16px; font-size:15px; font-weight:700; background:#0f172a; display:flex; justify-content:space-between; }
+
+.note { margin-top:24px; padding:16px; background:rgba(251,191,36,0.08); border:1px solid rgba(251,191,36,0.2); border-radius:8px; font-size:12px; color:#fbbf24; line-height:1.8; }
+</style>
+</head>
+<body>
+<div class="container">
+<h1>6月点位结算 & 公司盈亏</h1>
+<p class="subtitle">基于美团结算 | 2026年6月 | 惠州艾云 | 保险 8.5分/单</p>
+
+<!-- ====== Part 1: Payout to Owners ====== -->
+<h2>一、应付点位负责人</h2>
+
+<div class="cards">
+    <div class="card">
+        <div class="card-title">应付总额</div>
+        <div class="card-value income">¥14,563</div>
+        <div class="card-sub">陈贤乡+赵金荣+欧金标</div>
+    </div>
+    <div class="card">
+        <div class="card-title">常规点位(结余为正才付)</div>
+        <div class="card-value income">¥14,563</div>
+        <div class="card-sub">万科欧泊亏损不计入</div>
+    </div>
+    <div class="card">
+        <div class="card-title">承包点位(2元/单)</div>
+        <div class="card-value" style="color:#fbbf24">¥6,686</div>
+        <div class="card-sub">绿地星玥+珠江国际轻纺城</div>
+    </div>
+</div>
+
+<div class="person-section">
+    <div class="person-header">陈贤乡 <span class="total-badge positive">应付 ¥7,780</span></div>
+    <table>
+        <thead><tr><th>点位</th><th>单量</th><th>计算过程</th><th>人力(公司垫)</th><th>应付金额</th></tr></thead>
+        <tbody><tr>
+            <td>中大附属第六医院</td>
+            <td>3,238</td>
+            <td class="muted" style="font-size:11px">服务¥8,095+补贴¥9,040-保险¥275-人力¥9,080</td>
+            <td class="cost">-¥9,080</td>
+            <td class="income"><strong>¥7,780</strong></td>
+        </tr></tbody>
+    </table>
+</div><div class="person-section">
+    <div class="person-header">赵金荣 <span class="total-badge positive">应付 ¥6,686</span></div>
+    <table>
+        <thead><tr><th>点位</th><th>单量</th><th>计算过程</th><th>人力(公司垫)</th><th>应付金额</th></tr></thead>
+        <tbody><tr>
+            <td>绿地星玥 <span style="font-size:10px;color:#fbbf24">承包(2元/单)</span></td>
+            <td>2,960</td>
+            <td class="muted" style="font-size:11px">2960单 × ¥2</td>
+            <td class="muted">—</td>
+            <td class="income"><strong>¥5,920</strong></td>
+        </tr><tr>
+            <td>万科欧泊</td>
+            <td>932</td>
+            <td class="muted" style="font-size:11px">服务¥2,330+补贴¥400-保险¥79-人力¥6,030</td>
+            <td class="cost">-¥6,030</td>
+            <td class="income"><strong>¥0</strong></td>
+        </tr><tr>
+            <td>珠江国际轻纺城 <span style="font-size:10px;color:#fbbf24">承包(2元/单)</span></td>
+            <td>383</td>
+            <td class="muted" style="font-size:11px">383单 × ¥2</td>
+            <td class="muted">—</td>
+            <td class="income"><strong>¥766</strong></td>
+        </tr></tbody>
+    </table>
+</div><div class="person-section">
+    <div class="person-header">欧金标 <span class="total-badge positive">应付 ¥97</span></div>
+    <table>
+        <thead><tr><th>点位</th><th>单量</th><th>计算过程</th><th>人力(公司垫)</th><th>应付金额</th></tr></thead>
+        <tbody><tr>
+            <td>中大附三岭南医院</td>
+            <td>1,016</td>
+            <td class="muted" style="font-size:11px">服务¥2,540+补贴¥1,360-保险¥86-人力¥3,840</td>
+            <td class="cost">-¥3,840</td>
+            <td class="income"><strong>¥0</strong></td>
+        </tr><tr>
+            <td>云升科技园</td>
+            <td>40</td>
+            <td class="muted" style="font-size:11px">服务¥100+补贴¥0-保险¥3-人力¥0</td>
+            <td class="muted">—</td>
+            <td class="income"><strong>¥97</strong></td>
+        </tr></tbody>
+    </table>
+</div>
+
+<!-- ====== Part 2: Company P&L ====== -->
+<h2>二、公司层面盈亏</h2>
+
+<div class="pnl-row">
+    <div class="pnl-section">收入</div>
+    <div class="pnl-section" style="text-align:right"></div>
+
+    <div class="pnl-label">美团总结算(11站)</div>
+    <div class="pnl-value income">+¥45,248</div>
+    <div class="pnl-sub">服务费 ¥26,768 + 补贴 ¥18,480</div>
+
+    <div class="pnl-label">保险扣除</div>
+    <div class="pnl-value cost">-¥908</div>
+    <div class="pnl-sub">10,707单 × 8.5分/单</div>
+
+    <div class="pnl-section">支出</div>
+    <div class="pnl-section" style="text-align:right"></div>
+
+    <div class="pnl-label">公司垫付人力(常规站)</div>
+    <div class="pnl-value cost">-¥18,950</div>
+    <div class="pnl-sub">8站有计薪数据</div>
+
+    <div class="pnl-label">应付责任人-常规站点</div>
+    <div class="pnl-value cost">-¥7,877</div>
+    <div class="pnl-sub">仅结余为正的站点</div>
+
+    <div class="pnl-label">应付责任人-承包站点</div>
+    <div class="pnl-value cost">-¥6,686</div>
+    <div class="pnl-sub">绿地星玥 ¥5,920 + 珠江 ¥766</div>
+
+    <div class="pnl-label">公司自有站人力</div>
+    <div class="pnl-value cost">-¥9,255</div>
+    <div class="pnl-sub">和业+万菱+金鹰+汇德+华林</div>
+
+    <div class="pnl-total">
+        <span>公司6月净利润</span>
+        <span class="positive">¥+1,571</span>
+    </div>
+</div>
+
+<div class="cards">
+    <div class="card">
+        <div class="card-title">常规站点公司净利</div>
+        <div class="card-value negative">¥-3,405</div>
+        <div class="card-sub">收入 ¥23,865 | 人力-¥18,950 | 分成-¥7,877</div>
+    </div>
+    <div class="card">
+        <div class="card-title">承包站点公司净利</div>
+        <div class="card-value positive">¥+7,228</div>
+        <div class="card-sub">收入 ¥14,198 | 付承包费-¥6,686 | 保险-¥284</div>
+    </div>
+    <div class="card">
+        <div class="card-title">公司自有站净利</div>
+        <div class="card-value negative">¥-2,251</div>
+        <div class="card-sub">收入 ¥7,185 | 人力-¥9,255</div>
+    </div>
+</div>
+
+<div class="note">
+    <strong>说明:</strong><br>
+    1. 常规站点规则：结余(服务费+补贴-保险-人力)为正时才向负责人支付，亏损由公司承担<br>
+    2. 承包站点规则：公司按 2元/单 支付给对方，补贴和保险由对方自理，公司净赚 0.5元/单<br>
+    3. 万科欧泊 6月亏损 ¥3,379(人力¥6,030超过收入¥2,730)，无应付<br>
+    4. 分红比例、物料费用等未计入，待另行约定
+</div>
+</div>
+</body>
+</html>
