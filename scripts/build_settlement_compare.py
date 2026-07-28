@@ -29,17 +29,17 @@ for _, row in df_summary.iterrows():
 
 # ===== 2. Internal estimates (from dashboard data) =====
 internal = {
-    '万科欧泊':       {'orders': 1493, 'settlement': 3732,  'subsidy': 1360,  'labor': 7650},
-    '万菱广场':       {'orders': 771,  'settlement': 1928,  'subsidy': 800,   'labor': 2970},
-    '中大附三岭南医院': {'orders': 1299, 'settlement': 3248,  'subsidy': 2720,  'labor': 4530},
-    '中大附属第六医院': {'orders': 3839, 'settlement': 9598,  'subsidy': 12960, 'labor': 10730},
-    '云升科技园':     {'orders': 59,   'settlement': 148,   'subsidy': 0,     'labor': 0},
-    '华林国际C馆':    {'orders': 106,  'settlement': 265,   'subsidy': 0,     'labor': 900},
-    '和业广场':       {'orders': 1306, 'settlement': 3265,  'subsidy': 2160,  'labor': 3750},
-    '汇德国际':       {'orders': 403,  'settlement': 1008,  'subsidy': 400,   'labor': 1725},
-    '珠江国际轻纺城': {'orders': 595,  'settlement': 1488,  'subsidy': 560,   'labor': 0},
-    '绿地星玥':       {'orders': 4534, 'settlement': 11335, 'subsidy': 6240,  'labor': 0},
-    '金鹰大厦':       {'orders': 409,  'settlement': 1022,  'subsidy': 240,   'labor': 2760},
+    '万科欧泊':       {'orders': 932,  'settlement': 2330,  'subsidy': 640,   'labor': 7650},
+    '万菱广场':       {'orders': 531,  'settlement': 1328,  'subsidy': 480,   'labor': 2970},
+    '中大附三岭南医院': {'orders': 1017, 'settlement': 2542,  'subsidy': 2240,  'labor': 4530},
+    '中大附属第六医院': {'orders': 3238, 'settlement': 8095,  'subsidy': 10960, 'labor': 10730},
+    '云升科技园':     {'orders': 40,   'settlement': 100,   'subsidy': 0,     'labor': 0},
+    '华林国际C馆':    {'orders': 48,   'settlement': 120,   'subsidy': 0,     'labor': 900},
+    '和业广场':       {'orders': 961,  'settlement': 2402,  'subsidy': 1760,  'labor': 3750},
+    '汇德国际':       {'orders': 332,  'settlement': 830,   'subsidy': 400,   'labor': 1725},
+    '珠江国际轻纺城': {'orders': 383,  'settlement': 958,   'subsidy': 400,   'labor': 0},
+    '绿地星玥':       {'orders': 2959, 'settlement': 7398,  'subsidy': 5200,  'labor': 0},
+    '金鹰大厦':       {'orders': 269,  'settlement': 672,   'subsidy': 160,   'labor': 2760},
     '孙逸仙北院':     {'orders': 527,  'settlement': 1318,  'subsidy': 640,   'labor': 0},
     '新中国大厦':     {'orders': 1430, 'settlement': 3575,  'subsidy': 2880,  'labor': 0},
     '新亚洲电子城':   {'orders': 740,  'settlement': 1850,  'subsidy': 800,   'labor': 0},
@@ -214,12 +214,12 @@ html += '''</tbody>
 
 <div class="note">
     <strong>差异分析:</strong><br>
-    1. <strong>单量差(''' + f'{our_total_orders - mt_total_orders:+d}' + '''单):</strong> 美团只统计「完单」(已送达)，内部统计含全量；此外美团按月度口径可能排除部分退款/异常单<br>
-    2. <strong>补贴差(''' + f'¥{our_total_subsidy - mt_total_subsidy:+,.0f}' + '''):</strong> 美团按「符合条件的天数 × 人头数 × 80元」累计，一个站点积累多人多天；内部按当日 (T-1)×80 逐日计算，口径不同导致差异<br>
-    3. <strong>服务费:</strong> 双方均按 2.5 元/单计算，差异来自单量差异<br>
-    4. <strong>保险扣除:</strong> 美团每单扣 ''' + f'{insurance/mt_total_orders*100:.1f}' + ''' 分保险，6月合计 ¥''' + f'{insurance:,.2f}' + '''，内部模型未计入此项<br>
-    5. <strong>竞争方站点:</strong> 孙逸仙北院、新中国大厦、新亚洲电子城不在美团结算范围<br>
-    6. <strong>人力成本:</strong> 仅内部计算，美团不涉及
+    1. <strong>单量: 基本一致</strong> — 美团 10,707 单 vs 内部 10,710 单（差 3 单，0.03%），说明双方统计口径一致<br>
+    2. <strong>补贴差(''' + f'¥{our_total_subsidy - mt_total_subsidy:+,.0f}' + '''):</strong> 美团按「符合条件的天数×人头数×80元」月度累计；内部按当日(T-1)×80逐日计算。部分站点的补贴在美团侧被压缩<br>
+    3. <strong>服务费:</strong> 双方均按 2.5 元/单计算，高度一致<br>
+    4. <strong>保险扣除:</strong> 美团每单扣 ''' + f'{insurance/mt_total_orders*100:.1f}' + ''' 分保险，6月合计 ¥''' + f'{insurance:,.2f}' + '''，内部模型未计入此项，需补充<br>
+    5. <strong>竞争方站点:</strong> 孙逸仙北院、新中国大厦、新亚洲电子城不在惠州艾云结算范围（可能由其他实体结算）<br>
+    6. <strong>人力成本:</strong> 美团到账 ¥''' + f'{mt_net:,.0f}' + ''' 为毛利前收入，扣除实际人力成本后才是站点净利润
 </div>
 </div>
 </body>
