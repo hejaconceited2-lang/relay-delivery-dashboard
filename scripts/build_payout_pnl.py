@@ -369,7 +369,7 @@ os.makedirs('output', exist_ok=True)
 with open(out_path, 'w', encoding='utf-8') as f:
     f.write(html)
 
-with open('june_payout_pnl.html', 'w', encoding='utf-8') as f:
+with open('analysis/june_payout_pnl.html', 'w', encoding='utf-8') as f:
     f.write(html)
 
 print(f'[OK] {out_path}')

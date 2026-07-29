@@ -289,7 +289,7 @@ with open(out_path, 'w', encoding='utf-8') as f:
     f.write(html)
 
 # Also copy to root
-with open('june_profit_sharing.html', 'w', encoding='utf-8') as f:
+with open('analysis/june_profit_sharing.html', 'w', encoding='utf-8') as f:
     f.write(html)
 
 print(f'[OK] {out_path}')

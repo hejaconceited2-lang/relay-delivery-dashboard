@@ -180,6 +180,6 @@ tr:hover{{background:rgba(129,140,248,.03)}}
 out = 'output/june_summary.html'
 os.makedirs('output', exist_ok=True)
 with open(out, 'w', encoding='utf-8') as f: f.write(html)
-with open('june_summary.html', 'w', encoding='utf-8') as f: f.write(html)
+with open('analysis/june_summary.html', 'w', encoding='utf-8') as f: f.write(html)
 print(f'[OK] {out}')
 print(f'公司净利: {company_net:+,.0f}')
