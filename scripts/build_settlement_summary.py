@@ -38,6 +38,15 @@ all_labor = sum(station_labor.values())
 MT_TOTAL = sum(v['total'] for v in mt.values())
 VAT_RATE = 0.06
 
+# 物料成本（公司垫付，承包站点对方自理）
+BASE_MATERIAL = 200  # 每站基础
+EXTRA_MATERIAL = {'万科欧泊': 1400 + 135 + 259 + 249}  # 额外物料
+
+def get_material(short):
+    if short in CONTRACT:
+        return 0  # 承包站点对方自理
+    return BASE_MATERIAL + EXTRA_MATERIAL.get(short, 0)
+
 rows = []
 total_co = total_ow = 0
 for owner, stations in owners:
@@ -49,15 +58,16 @@ for owner, stations in owners:
         ins = round(INS_PER * o, 2)
         mt_in = s + sub
         vat = mt_in * VAT_RATE  # VAT按美团到账比例分摊
+        material = get_material(short)
         if short in CONTRACT:
             co = o * 0.5 - vat; ow = o * 2 + sub - ins
         else:
             labor = station_labor.get(short, 0)
-            co = ow = (mt_in - ins - labor - vat) * 0.5
+            co = ow = (mt_in - ins - labor - material - vat) * 0.5
         co_sum += co; ow_sum += ow
-        rows.append((short, o, mt_in, ins, station_labor.get(short,0), vat, co, ow, 'contract' if short in CONTRACT else 'regular', owner))
+        rows.append((short, o, mt_in, ins, station_labor.get(short,0), material, vat, co, ow, 'contract' if short in CONTRACT else 'regular', owner))
     total_co += co_sum; total_ow += ow_sum
-    rows.append(('__SUB__', 0, 0, 0, 0, 0, co_sum, ow_sum, 'sub', owner))
+    rows.append(('__SUB__', 0, 0, 0, 0, 0, 0, co_sum, ow_sum, 'sub', owner))
 
 # Company
 co_self = 0
@@ -65,39 +75,46 @@ for short in company_stations:
     m = mt.get(short)
     if m:
         labor = station_labor.get(short, 0); ins = round(INS_PER * m['orders'], 2)
+        material = get_material(short)
         vat = m['total'] * VAT_RATE
-        co_self += m['total'] - ins - labor - vat
-        rows.append((short, m['orders'], m['total'], ins, labor, vat, m['total']-ins-labor-vat, 0, 'company', '公司自有'))
+        co_self += m['total'] - ins - labor - material - vat
+        rows.append((short, m['orders'], m['total'], ins, labor, material, vat, m['total']-ins-labor-material-vat, 0, 'company', '公司自有'))
 
+total_material = sum(get_material(s) for s in set(list(mt.keys())))
 company_net = total_co + co_self
 total_vat = MT_TOTAL * VAT_RATE
 
 # Build HTML
 body = ''
 for owner, _ in owners:
-    sub_rows = [r for r in rows if r[9] == owner]
-    owner_net = sum(r[6] for r in sub_rows if r[0] != '__SUB__')
-    owner_get = sum(r[7] for r in sub_rows if r[0] != '__SUB__')
+    sub_rows = [r for r in rows if r[10] == owner]
+    owner_net = sum(r[7] for r in sub_rows if r[0] != '__SUB__')
+    owner_get = sum(r[8] for r in sub_rows if r[0] != '__SUB__')
 
     body += f'''<div class="group">
     <div class="group-title">{owner} <span style="color:#64748b;font-weight:400;font-size:13px">公司 {owner_net:+,.0f} · 负责人 {owner_get:+,.0f}</span></div>
-    <table><thead><tr><th>点位</th><th>单量</th><th>美团到账</th><th>-保险</th><th>-人力</th><th>-增值税</th><th>公司</th><th>负责人</th></tr></thead><tbody>'''
+    <table><thead><tr><th>点位</th><th>单量</th><th>美团到账</th><th>-保险</th><th>-人力</th><th>-物料</th><th>-增值税</th><th>公司</th><th>负责人</th></tr></thead><tbody>'''
     for r in sub_rows:
-        if r[8] == 'sub': continue
-        short, o, mt_in, ins, labor, vat, co, ow, model, _ = r
+        if r[9] == 'sub': continue
+        short, o, mt_in, ins, labor, material, vat, co, ow, model, _ = r
         tag = ' <b style="color:#fbbf24;font-size:10px">承包</b>' if model == 'contract' else ''
-        labor_s = f'<td class="cost">-{labor:,.0f}</td>' if model != 'contract' and labor else '<td class="muted">—</td>'
+        if model == 'contract':
+            labor_s = '<td class="muted">—</td><td class="muted">—</td>'
+        else:
+            labor_s = f'<td class="cost">-{labor:,.0f}</td>' if labor else '<td class="muted">—</td>'
+            mat_s = f'<td class="cost">-{material:,.0f}</td>' if material else '<td class="muted">—</td>'
+            labor_s = labor_s + mat_s
         body += f'<tr><td>{short}{tag}</td><td>{o:,}</td><td class="inc">+{mt_in:,.0f}</td><td class="cost">-{ins:,.0f}</td>{labor_s}<td class="cost">-{vat:,.0f}</td><td class="{"pos" if co>=0 else "neg"}">{co:+,.0f}</td><td class="{"pos" if ow>=0 else "neg"}">{ow:+,.0f}</td></tr>'
     body += '</tbody></table></div>'
 
 # Self section
-self_rows = [r for r in rows if r[9] == '公司自有']
+self_rows = [r for r in rows if r[10] == '公司自有']
 body += f'''<div class="group self">
 <div class="group-title">公司自有 <span style="color:#64748b;font-weight:400;font-size:13px">合计 {co_self:+,.0f}</span></div>
-<table><thead><tr><th>点位</th><th>单量</th><th>美团到账</th><th>-保险</th><th>-人力</th><th>-增值税</th><th>结余</th></tr></thead><tbody>'''
+<table><thead><tr><th>点位</th><th>单量</th><th>美团到账</th><th>-保险</th><th>-人力</th><th>-物料</th><th>-增值税</th><th>结余</th></tr></thead><tbody>'''
 for r in self_rows:
-    short, o, mt_in, ins, labor, vat, co, _, _, _ = r
-    body += f'<tr><td>{short}</td><td>{o:,}</td><td class="inc">+{mt_in:,.0f}</td><td class="cost">-{ins:,.0f}</td><td class="cost">-{labor:,.0f}</td><td class="cost">-{vat:,.0f}</td><td class="{"pos" if co>=0 else "neg"}">{co:+,.0f}</td></tr>'
+    short, o, mt_in, ins, labor, material, vat, co, _, _, _ = r
+    body += f'<tr><td>{short}</td><td>{o:,}</td><td class="inc">+{mt_in:,.0f}</td><td class="cost">-{ins:,.0f}</td><td class="cost">-{labor:,.0f}</td><td class="cost">-{material:,.0f}</td><td class="cost">-{vat:,.0f}</td><td class="{"pos" if co>=0 else "neg"}">{co:+,.0f}</td></tr>'
 body += '</tbody></table></div>'
 
 html = f'''<!DOCTYPE html>
@@ -150,7 +167,7 @@ tr:hover{{background:rgba(129,140,248,.03)}}
 {body}
 
 <div class="total-bar">
-<div class="total-label">公司汇总净利<br><span style="font-size:11px;color:#64748b">到账 ¥{MT_TOTAL:,.0f} - 保险 ¥{INS:,.0f} - 人力 ¥{all_labor:,.0f} - 付负责人 ¥{total_ow:,.0f} - 增值税 ¥{total_vat:,.0f} - 自有站 ¥{-co_self:,.0f}</span></div>
+<div class="total-label">公司汇总净利<br><span style="font-size:11px;color:#64748b">到账 ¥{MT_TOTAL:,.0f} - 保险 ¥{INS:,.0f} - 人力 ¥{all_labor:,.0f} - 物料 ¥{total_material:,.0f} - 付负责人 ¥{total_ow:,.0f} - 增值税 ¥{total_vat:,.0f} - 自有站 ¥{-co_self:,.0f}</span></div>
 <div class="total-value {"green" if company_net>=0 else "red"}">{company_net:+,.0f}</div>
 </div>
 
@@ -165,6 +182,7 @@ tr:hover{{background:rgba(129,140,248,.03)}}
 <tr><td class="l">保险</td><td class="r cost">-¥{INS:,.0f}</td></tr>
 <tr><td class="l">增值税 6%</td><td class="r cost">-¥{total_vat:,.0f}</td></tr>
 <tr class="sec"><td class="l">人力成本（公司垫付）</td><td class="r cost">-¥{all_labor:,.0f}</td></tr>
+<tr><td class="l">物料成本（公司垫付）</td><td class="r cost">-¥{total_material:,.0f}</td></tr>
 <tr class="sec"><td class="l">应付负责人分红</td><td class="r cost">-¥{total_ow:,.0f}</td></tr>
 <tr class="total"><td class="l">公司净利</td><td class="r {"pos" if company_net>=0 else "neg"}">{company_net:+,.0f}</td></tr>
 </table>
