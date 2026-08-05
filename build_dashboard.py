@@ -156,6 +156,22 @@ SETTLEMENT_PRICE = 2.5     # 结算价 元/单
 RIDER_FEE = 1.0            # 骑手费率 元/单 (骑手↔美团, 非我方收入)
 LABOR_RATE = 30            # 人力时薪 元/h
 HOURS_PER_PERSON = 3       # 人均日工时 h
+MATERIAL_PER_STATION = 100 / 30  # 物料 元/天 (100元/月 ÷ 30天)
+
+# 8月起规则调整
+AUG_START = '2026-08-01'
+SETTLEMENT_PRICE_AUG = 2.0           # 8月起结算价 2元/单
+SUBSIDY_KEEPERS = {'分段履约广州高科大厦（新）', '分段履约广州上城敏捷', '分段履约广州番禺二院'}
+
+def get_settlement_price(date_str):
+    """根据日期返回结算价"""
+    return SETTLEMENT_PRICE_AUG if date_str >= AUG_START else SETTLEMENT_PRICE
+
+def has_subsidy(station_name, date_str):
+    """8月起仅保留站点仍有人头补贴"""
+    if date_str >= AUG_START:
+        return station_name in SUBSIDY_KEEPERS
+    return True  # 8月前所有站点有补贴
 MATERIAL_PER_STATION = 0       # 物料摊销 元/天/站 (暂不计入, 待确认口径)
 SUBSIDY_PER_EXTRA = 80     # 补贴 (T-1)x80 元/天
 PER_PERSON_THRESHOLD = 20  # 补贴门槛 人均单量
@@ -321,6 +337,7 @@ def get_station_histories():
         date_obj = datetime.strptime(f'20{dd[0:2]}-{dd[3:5]}-{dd[6:8]}', '%Y-%m-%d')
         date_display = date_obj.strftime('%m/%d')
         year_date = date_obj.strftime('%Y-%m-%d')
+        settle_price = get_settlement_price(year_date)
 
         rider_cols = [c for c in df.columns
                       if c.startswith('经手骑手') and c != '经手骑手1']
@@ -356,7 +373,8 @@ def get_station_histories():
                             STATION_HOURS.get(s, HOURS_PER_PERSON))
                 rate = STATION_LABOR_RATE.get(s, LABOR_RATE)
                 labor = registered * hours_per * rate
-            profit = cnt * SETTLEMENT_PRICE + subsidy - labor - MATERIAL_PER_STATION - canc_comp
+            settle_price = get_settlement_price(year_date)
+            profit = cnt * settle_price + subsidy - labor - MATERIAL_PER_STATION - canc_comp
 
             if s not in station_data:
                 station_data[s] = []
@@ -512,9 +530,12 @@ def kpi_card(title, value, sub='', color='#818cf8'):
         <div class="kpi-sub">{sub}</div></div>"""
 
 
-def build_station_tab(r, station_charts):
+def build_station_tab(r, station_charts, date_str=''):
     short = r['站点']
     full_name = r['全名']
+    if not date_str:
+        date_str = '2026-06-01'  # fallback for old calls
+    settle_price_local = get_settlement_price(date_str)
     is_ours = r['归属'] == '我方'
     charts = station_charts[full_name]
     registered = int(r['系统登记']) if pd.notna(r['系统登记']) else None
@@ -533,9 +554,13 @@ def build_station_tab(r, station_charts):
         status_note = '登记数据缺失'
 
     if is_ours and onsite_calc:
-        meets_per = r['人均单量'] >= 20 if r['人均单量'] else False
-        subsidy_per_day = (registered - 1) * 80 if meets_per else 0  # 补贴始终用系统登记
-        subsidy_color = '#34d399' if subsidy_per_day > 0 else '#f87171'
+        if has_subsidy(r['全名'], date_str):
+            meets_per = r['人均单量'] >= 20 if r['人均单量'] else False
+            subsidy_per_day = (registered - 1) * 80 if meets_per else 0
+            subsidy_color = '#34d399' if subsidy_per_day > 0 else '#f87171'
+        else:
+            subsidy_per_day = 0
+            subsidy_color = '#64748b'
     else:
         subsidy_per_day = 0
         subsidy_color = '#64748b'
@@ -557,7 +582,7 @@ def build_station_tab(r, station_charts):
     if is_ours and onsite_calc:
         subsidy_html = f'<span>补贴 {"+¥" + str(subsidy_per_day) if subsidy_per_day > 0 else "¥0"}</span>'
         if onsite_confirmed:
-            profit_val = orders*2.5 + subsidy_per_day - s_labor - MATERIAL_PER_STATION - canc_comp
+            profit_val = orders * settle_price_local + subsidy_per_day - s_labor - MATERIAL_PER_STATION - canc_comp
             profit_color = '#34d399' if profit_val >= 0 else '#f87171'
             labor_html = f'<span>人力 -¥{s_labor:,.0f}</span>'
             profit_html = f'<span class="profit-net-value" id="profit_net_{tab_id}" style="color:{profit_color}">净利 ¥{profit_val:+,.0f}</span>'
@@ -617,7 +642,7 @@ def build_station_tab(r, station_charts):
 
 """ + (f"""
         <div class="profit-line" id="profit_line_{tab_id}">
-            <span>结算 ¥{orders * 2.5:,.0f}</span>
+            <span>结算 ¥{orders * settle_price_local:,.0f}</span>
             {labor_html}
             {subsidy_html}
             <span>取消赔偿 -¥{int(canc_comp):,}</span>
@@ -659,6 +684,7 @@ def process_date(date_str):
     date_display = date_obj.strftime('%Y-%m-%d')
     date_short = date_obj.strftime('%y-%m-%d')  # YY-MM-DD for directory
     date_dir = os.path.join(BASE_DIR, date_short)
+    settle_price = get_settlement_price(date_str)  # 8月起2元/单
 
     if not os.path.isdir(date_dir):
         raise FileNotFoundError(f'日期目录不存在: {date_dir}')
@@ -1065,7 +1091,7 @@ def process_date(date_str):
     # ── All panels ──
     all_panels = [tabs_overview]
     for _, r in st.iterrows():
-        all_panels.append(build_station_tab(r, station_charts))
+        all_panels.append(build_station_tab(r, station_charts, date_str))
     all_panels_html = '\n'.join(all_panels)
 
     # ── Full HTML ──
@@ -1460,7 +1486,7 @@ function recalcUE(tabId, registered) {{
     }}
 
     // 盈利重算（人力成本: 有实际数据则用之, 否则公式估算）
-    var settlement = orders * 2.5;
+    var settlement = orders * settle_price;
     var laborSource = panel.dataset.laborSource || 'formula';
     var labor;
     if (laborSource === 'payroll') {{
@@ -1561,12 +1587,16 @@ function exportRegisteredConfig() {{
         per_p = r['人均单量'] if pd.notna(r['人均单量']) else None
 
         if grp == '我方' and reg_count and cnt > 0:
-            settlement = cnt * SETTLEMENT_PRICE
+            date_str = date_display
+            settlement = cnt * get_settlement_price(date_str)
             canc_comp = r['取消赔偿']
 
-            # 补贴始终基于系统登记计算
-            meets = per_p and per_p >= PER_PERSON_THRESHOLD
-            subsidy = (reg_count - 1) * SUBSIDY_PER_EXTRA if meets else 0
+            # 8月起仅保留站点有人头补贴
+            if has_subsidy(r['全名'], date_str):
+                meets = per_p and per_p >= PER_PERSON_THRESHOLD
+                subsidy = (reg_count - 1) * SUBSIDY_PER_EXTRA if meets else 0
+            else:
+                subsidy = 0
 
             # 仅计入已确认站点（缺计薪数据的站点不参与日汇总）
             if ons_confirmed:
@@ -1618,7 +1648,7 @@ function exportRegisteredConfig() {{
     # ── 生成单日 UE 分析页 ──
     build_ue_page(date_display, total, len(st_ours), station_profits,
                   day_profit, day_total_revenue, day_total_subsidy, day_total_labor,
-                  day_total_canc_comp, any_unconfirmed, t_min, t_max)
+                  day_total_canc_comp, any_unconfirmed, t_min, t_max, settle_price)
 
     # 返回摘要用于更新主页面
     return {
@@ -1641,7 +1671,7 @@ function exportRegisteredConfig() {{
 
 def build_ue_page(date_display, total_orders, ours_count, station_profits,
                   day_profit, day_revenue, day_subsidy, day_labor,
-                  day_canc_comp, any_unconfirmed, t_min, t_max):
+                  day_canc_comp, any_unconfirmed, t_min, t_max, settle_price=2.5):
     """生成单日 UE 盈利分析页面 MMDD_ue.html"""
     date_obj = datetime.strptime(date_display, '%Y-%m-%d')
     mdd = date_obj.strftime('%m%d')
@@ -1906,7 +1936,7 @@ tr:hover td {{ background:rgba(129,140,248,0.04); }}
 <div class="container">
 
     <div class="note-box">
-        <strong>UE 参数</strong> &nbsp;结算 {SETTLEMENT_PRICE}元/单 &nbsp;|&nbsp; 人力 {LABOR_RATE}元/h×{HOURS_PER_PERSON}h &nbsp;|&nbsp; 补贴 (T-1)×{SUBSIDY_PER_EXTRA}元 &nbsp;|&nbsp; 门槛≥{PER_PERSON_THRESHOLD}单/人
+        <strong>UE 参数</strong> &nbsp;结算 {SETTLEMENT_PRICE}元/单(8月起2元) &nbsp;|&nbsp; 人力 {LABOR_RATE}元/h×{HOURS_PER_PERSON}h &nbsp;|&nbsp; 补贴 (T-1)×{SUBSIDY_PER_EXTRA}元(8月起仅保留站点) &nbsp;|&nbsp; 门槛≥{PER_PERSON_THRESHOLD}单/人
     </div>
 """ + (f"""
     <div class="note-box" style="border-left-color:#fbbf24;background:rgba(251,191,36,0.06);">
@@ -1918,7 +1948,7 @@ tr:hover td {{ background:rgba(129,140,248,0.04); }}
         <div class="kpi-card">
             <div class="kpi-title">总收入</div>
             <div class="kpi-value" style="color:#818cf8">¥{day_revenue:,.0f}</div>
-            <div class="kpi-sub">结算收入 2.5元/单</div>
+            <div class="kpi-sub">结算收入 {settle_price}元/单</div>
         </div>
         <div class="kpi-card">
             <div class="kpi-title">总人力成本{'<sup style="color:#64748b;font-size:10px">*</sup>' if any_unconfirmed else ''}</div>
